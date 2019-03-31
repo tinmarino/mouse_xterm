@@ -1,16 +1,38 @@
 #!/usr/bin/bash
+<<'END_DOC'
+  DESCRIPTION :
+    Mouse click listener implementation on Bash by Tinmarino
+    Your readline cursor should move on mouse click
 
-# Mouse click listener implmentation on Bash by Tinmarino
-# Source me and your readline cursor should move on mouse click
+  USAGE :
+    >source mouse.sh && mouse_track
+    `ctrl+l` to renable track (automatically disable when you want to scrool)
 
-# Depends : xterm, readline
+  DEPENDS :
+    xterm, readline
 
+  LICENSE :
+    Copyright © 2019 Tinmarino
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+END_DOC
 
 function log {
   # Log for debug
   echo $1 >> /tmp/xterm_monitor
 }
 
+function echo_mouse_track_enable {
+  # Enable (high)
+  echo -ne "\e[?1000;1006;1015h"
+}
+
+function echo_mouse_track_disable {
+  # Disable (low)
+  echo -ne "\e[?1000;1006;1015l"
+}
 
 function read_keys {
   # Read $keys <- Stdin (until 'm')
@@ -31,20 +53,24 @@ function read_cursor_pos {
   log "cursor_pos $cursor_pos"
 }
 
-
-preexec () { :; }
 function trap_disable_mouse {
-  # Callback traped to debug : Disable XTERM escape
-  log "trap for : $BASH_COMMAND"
+  # Callback : traped to debug : Disable XTERM escape
+  log "trap : for : $BASH_COMMAND"
+
+  # Declare exec callback
+  preexec () { :; }
+
+  # Leave for some commands
   [ -n "$COMP_LINE" ] && return  # do nothing if completing
   [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] && return # don't cause a preexec for $PROMPT_COMMAND
-  local cmd='echo -ne "\e[?1000;1006;1015l"'
-  log "Preexc should stop tracking with : $cmd"
-  local this_command=`$cmd`
-  eval $cmd
+  [[ "$BASH_COMMAND" =~ \s*ipy.* ]] && return # ipython : can keep bindings
+
+  # Disable mouse as callback
+  log "trap : Disabling mouse"
+  local this_command=`echo_mouse_track_disable`
+  echo_mouse_track_disable
   preexec "$this_command"
 }
-
 
 function mouse_0_cb {
   # Callback for mouse button 0 click/release
@@ -73,20 +99,17 @@ function mouse_0_cb {
   READLINE_POINT=$line_pos
 
   # Enable listen for next click
-  echo -ne "\e[?1000;1006;1015h"
+  echo_mouse_track_enable
 }
 
 function mouse_void_cb {
   # Callback : clean xterm and disable mouse escape
   read_keys
-  echo -ne "\e[?1000;1006;1015l"
+  echo_mouse_track_disable
 }
 
 function mouse_track {
   # Init : Enable mouse tracking
-  # Track mouse
-  echo -ne "\e[?1000;1006;1015h"
-
   # Utils
   bind '"\C-91": clear-screen'
   bind -x '"\C-92": printf "\e[?1000;1006;1015h"'
@@ -105,10 +128,10 @@ function mouse_track {
   trap 'trap_disable_mouse' DEBUG
 
   # Enable mouse tracking after command return
-  export PROMPT_COMMAND+='echo -ne "\e[?1000;1006;1015h";'
+  export PROMPT_COMMAND+='echo_mouse_track_enable;'
 }
 
 function mouse_ignore {
   # Stop : Disable mouse tracking
-  echo -ne "\e[?1000;1006;1015l"
+  echo_mouse_track_disable
 }
