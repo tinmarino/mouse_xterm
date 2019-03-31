@@ -57,9 +57,6 @@ function trap_disable_mouse {
   # Callback : traped to debug : Disable XTERM escape
   log "trap : for : $BASH_COMMAND"
 
-  # Declare exec callback
-  preexec () { :; }
-
   # Leave for some commands
   [ -n "$COMP_LINE" ] && return  # do nothing if completing
   [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] && return # don't cause a preexec for $PROMPT_COMMAND
@@ -67,9 +64,7 @@ function trap_disable_mouse {
 
   # Disable mouse as callback
   log "trap : Disabling mouse"
-  local this_command=`echo_mouse_track_disable`
   echo_mouse_track_disable
-  preexec "$this_command"
 }
 
 function mouse_0_cb {
