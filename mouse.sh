@@ -20,14 +20,16 @@
     (at your option) any later version.
 END_DOC
 
-
+# Embed all in a scope hiddder
+function mouse_track_scope_hidder {
 # Mouse track status : 1 tracking; 0 Not tracking
 mouse_track_status=0
 
-function log {
+
+function log_mouse_track {
   # Log for debug
   :
-  echo $1 >> /tmp/xterm_monitor
+  # echo $1 >> /tmp/xterm_monitor
 }
 
 function echo_mouse_track_enable {
@@ -42,15 +44,15 @@ function echo_mouse_track_disable {
   mouse_track_status=0
 }
 
-function read_keys {
+function read_mouse_keys_remaining {
   # Read $keys <- Stdin (until 'm')
-  log "---------------"
+  log_mouse_track "---------------"
   keys=""
   while  read -n 1 c; do
     keys="$keys$c"
     [[ $c == 'M' || $c == 'm' ]] && break
   done
-  log "keys = $keys"
+  log_mouse_track "keys = $keys"
 }
 
 function read_cursor_pos {
@@ -58,7 +60,7 @@ function read_cursor_pos {
   echo -en "\E[6n"
   read -sdR cursor_pos
   cursor_pos=${cursor_pos#*[}
-  log "cursor_pos $cursor_pos"
+  log_mouse_track "cursor_pos $cursor_pos"
 }
 
 function trap_disable_mouse {
@@ -66,7 +68,7 @@ function trap_disable_mouse {
   [[ $mouse_track_status == 0 ]] && return
 
   # Callback : traped to debug : Disable XTERM escape
-  log "trap : for : $BASH_COMMAND"
+  log_mouse_track "trap : for : $BASH_COMMAND"
 
   # Leave for some commands
   [ -n "$COMP_LINE" ] && return  # do nothing if completing
@@ -74,7 +76,7 @@ function trap_disable_mouse {
   [[ "$BASH_COMMAND" =~ \s*ipy.* ]] && return # ipython : can keep bindings
 
   # Disable mouse as callback
-  log "trap : Disabling mouse"
+  log_mouse_track "trap : Disabling mouse"
   echo_mouse_track_disable
 }
 
@@ -82,7 +84,7 @@ function mouse_0_cb {
   local x0 y0 x1 y1 xy col line_pos
   # Callback for mouse button 0 click/release
   # Read rest
-  read_keys
+  read_mouse_keys_remaining
   xy=${keys:0:-1}
   let x1=${xy%%;*}
   let y1=${xy##*;}
@@ -97,9 +99,9 @@ function mouse_0_cb {
   [[ col -lt 0 ]] && let col=0
   let col=$col*$COLUMNS
   let line_pos="$x1 - $x0 - 2 + $col"
-  log "x1 = $x1 && y1 = $y1 && line_pos = $line_pos"
-  log "x0 = $x0 && y0 = $y0 && cursor_pos = $cursor_pos"
-  log "col = $col"
+  log_mouse_track "x1 = $x1 && y1 = $y1 && line_pos = $line_pos"
+  log_mouse_track "x0 = $x0 && y0 = $y0 && cursor_pos = $cursor_pos"
+  log_mouse_track "col = $col"
   # TODO if too low, put on last line
 
   # Move cursor
@@ -111,11 +113,11 @@ function mouse_0_cb {
 
 function mouse_void_cb {
   # Callback : clean xterm and disable mouse escape
-  read_keys
+  read_mouse_keys_remaining
   echo_mouse_track_disable
 }
 
-function mouse_track {
+function mouse_track_start_hidden {
   # Init : Enable mouse tracking
   # Utils
   bind    '"\C-91": clear-screen'
@@ -139,7 +141,21 @@ function mouse_track {
   export PROMPT_COMMAND+='echo_mouse_track_enable;'
 }
 
-function mouse_ignore {
+function mouse_track_stop_hidden {
   # Stop : Disable mouse tracking
   echo_mouse_track_disable
+}
+
+[[ $1 == 1 ]] && mouse_track_start_hidden
+[[ $1 == 0 ]] && mouse_track_stop_hidden
+} # End of scope_hidder
+
+
+# Exports
+function mouse_track_start {
+  mouse_track_scope_hidder 1
+}
+
+function mouse_track_stop {
+  mouse_track_scope_hidder 0
 }
