@@ -6,7 +6,7 @@
     Your readline cursor should move on mouse click
 
   USAGE :
-    >source mouse.sh && mouse_track
+    source mouse.sh && mouse_track
     `ctrl+l` to renable track (automatically disable when you want to scrool)
 
   DEPENDS :
@@ -20,19 +20,26 @@
     (at your option) any later version.
 END_DOC
 
+
+# Mouse track status : 1 tracking; 0 Not tracking
+mouse_track_status=0
+
 function log {
   # Log for debug
+  :
   echo $1 >> /tmp/xterm_monitor
 }
 
 function echo_mouse_track_enable {
   # Enable (high)
   echo -ne "\e[?1000;1006;1015h"
+  mouse_track_status=1
 }
 
 function echo_mouse_track_disable {
   # Disable (low)
   echo -ne "\e[?1000;1006;1015l"
+  mouse_track_status=0
 }
 
 function read_keys {
@@ -55,6 +62,9 @@ function read_cursor_pos {
 }
 
 function trap_disable_mouse {
+  # Leave if mouse disabled yet
+  [[ $mouse_track_status == 0 ]] && return
+
   # Callback : traped to debug : Disable XTERM escape
   log "trap : for : $BASH_COMMAND"
 
@@ -69,6 +79,7 @@ function trap_disable_mouse {
 }
 
 function mouse_0_cb {
+  local x0 y0 x1 y1 xy col line_pos
   # Callback for mouse button 0 click/release
   # Read rest
   read_keys
