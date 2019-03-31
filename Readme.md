@@ -8,7 +8,7 @@ The following code enables clicks to move cursor in bash/readline on xterm
 ## Quickstart
 
 	mkdir Mouse && cd Mouse
-	git clone https://github.com/tinmarino/mouse_xterm && cd mouse_xterm
+	git clone --depth=1 https://github.com/tinmarino/mouse_xterm .
 	source mouse.sh && mouse_track
 	# Press C-l after using mousewhell because it has to disable mouse tracking to work
 
