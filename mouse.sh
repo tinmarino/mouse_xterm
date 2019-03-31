@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 <<'END_DOC'
+    Mouse click to move cursor
+
   DESCRIPTION :
-    Mouse click listener implementation on Bash by Tinmarino
     Your readline cursor should move on mouse click
 
   USAGE :
@@ -12,7 +13,7 @@
     xterm, readline
 
   LICENSE :
-    Copyright © 2019 Tinmarino
+    Copyright © 2019 Tinmarino <tinmarino@gmail.com>
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -106,13 +107,14 @@ function mouse_void_cb {
 function mouse_track {
   # Init : Enable mouse tracking
   # Utils
-  bind '"\C-91": clear-screen'
+  bind    '"\C-91": clear-screen'
   bind -x '"\C-92": printf "\e[?1000;1006;1015h"'
   bind -x '"\C-91": printf "\e[?1000;1006;1015l"'
+  bind    '"\C-98": beginning-of-line'
   bind -x '"\C-99": mouse_0_cb'
 
   # Bind Click
-  bind '"\e[<0;": "\C-A\C-99"'
+  bind '"\e[<0;": "\C-98\C-99"'
   bind -x '"\e[<64;": mouse_void_cb'
   bind -x '"\e[<65;": mouse_void_cb'
 
