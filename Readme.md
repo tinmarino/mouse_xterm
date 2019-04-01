@@ -12,7 +12,7 @@ The following code enables clicks to move cursor in bash/readline on xterm
 	source mouse.sh && mouse_track_start
 	# Press C-l after using mousewhell because it has to disable mouse tracking to work
 
-## Code
+## Xterm
 
 Xterm have a mouse tracking feature
 
@@ -23,6 +23,8 @@ Xterm have a mouse tracking feature
 * Mouse whell up : `\e[<64;3;21M`
 * Mouse whell down : `\e[<65;3;21M`
 * Press `C-v` after enabling the mouse tracking to see that
+
+## Bash
 
 Readline can trigger a bash callback
 
@@ -44,6 +46,21 @@ Readline callback can change cursor (point) position with `READLINE_POINT` envir
 		READLINE_POINT=24    # The cursor position (0 for begining of command)
 		READLINE_LINE='coco' # The command line current content
 	}
+
+## Perl (reply)
+
+TODO no comment yet, I could not invoke a readline command or I would have lost $term->{point}
+
+## Python (ipython)
+
+Ipython supports mouse. See [Ipython/terminal/shortcuts](https://github.com/ipython/ipython/blob/master/IPython/terminal/shortcuts.py) -> [Prompt-toolkit/bingin.mouse](https://github.com/prompt-toolkit/python-prompt-toolkit/blob/master/prompt_toolkit/key_binding/bindings/mouse.py)
+
+	ipython --TerminalInteractiveShell.mouse_support=True
+
+Or to enable at startup write in `.ipython/profile_default/ipython_config.py`
+
+	c = get_config()
+	c.TerminalInteractiveShell.mouse_support
 
 ## Limitations
 
