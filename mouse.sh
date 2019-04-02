@@ -21,8 +21,6 @@
 END_DOC
 
 
-# Embed all in a scope hiddder
-# function mouse_track_scope_hidder {
 # Mouse track status : 1 tracking; 0 Not tracking
 mouse_track_status=0
 
@@ -91,6 +89,7 @@ function mouse_track_0_cb {
   let y1=${xy##*;}
 
   # Get mouse position (bol)
+  mouse_track_read_keys_remaining
   mouse_track_read_cursor_pos
   x0=${cursor_pos##*;}
   y0=${cursor_pos%%;*}
