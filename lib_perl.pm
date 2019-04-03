@@ -26,8 +26,8 @@ $term->bind_keyseq("\e[<0;", 'cb_click_0');
 
 sub mlog {
 	my $in = shift;
-	open(LOG, '>>/tmp/xterm_monitor');
-	say LOG "Reply : $in";
+    # open(LOG, '>>/tmp/xterm_monitor');
+    # say LOG "Reply : $in";
 }
 
 sub stop_reading {
@@ -51,6 +51,9 @@ sub read_keys {
 }
 
 sub get_beginning_of_line {
+    # Clean stdin
+    read_keys;
+
 	# Read cursor location
 	print "\033[6n";
 	my $keys = read_keys;
