@@ -29,7 +29,7 @@ mouse_track_status=0
 function mouse_track_log {
   # Log for debug
   :
-  echo $1 >> /tmp/xterm_monitor
+  # echo $1 >> /tmp/xterm_monitor
 }
 
 
@@ -51,7 +51,9 @@ function mouse_track_read_keys_remaining {
   # Read $keys <- Stdin (until 'm')
   mouse_track_log "---------------"
   keys=""
-  while read -n 1 c; do
+  # TODO ugly 0.001 sec timeout
+  while read -t 0.001 -n 1 c; do
+    mouse_track_log "reading $c"
     keys="$keys$c"
     [[ $c == 'M' || $c == 'm' || $c == 'R' || $c == '' ]] && break
   done
@@ -61,9 +63,9 @@ function mouse_track_read_keys_remaining {
 
 function mouse_track_read_cursor_pos {
   # Read $cursor_pos <- xterm <- readline
+
   # Clean stdin
-  # TODO recover
-  # mouse_track_read_keys_remaining
+  mouse_track_read_keys_remaining
 
   # Ask cursor pos
   echo -en $s_echo_get_cursor_pos
