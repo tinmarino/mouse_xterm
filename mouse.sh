@@ -86,8 +86,8 @@ function mouse_track_trap_disable_mouse {
   [[ "$BASH_COMMAND" =~ \s*ipy.* ]] && return # ipython : can keep bindings
 
   # Disable mouse as callback
-  mouse_track_log "trap : Disabling mouse"
-  #mouse_track_echo_disable
+  mouse_track_log "trap : Stoping mouse tracking"
+  mouse_track_stop
 }
 
 
@@ -126,7 +126,7 @@ function mouse_track_0_cb {
 function mouse_track_void_cb {
   # Callback : clean xterm and disable mouse escape
   mouse_track_read_keys_remaining
-  mouse_track_echo_disable
+  mouse_track_stop
 }
 
 

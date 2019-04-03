@@ -17,19 +17,37 @@ use Term::ReadLine;
 use Term::ReadKey;
 
 our $term = new Term::ReadLine 'Reply';
-$term->add_defun('cb_debug', \&cb_debug, ord "\ch");
-$term->add_defun('cb_click_0', \&cb_click_0);
 
-# Mouse click
-$term->bind_keyseq("\e[<0;", 'cb_click_0');
+sub mouse_track_bindings {
+    $term->add_defun('cb_debug', \&cb_debug, ord "\ch");
+    $term->add_defun('cb_click_0', \&cb_click_0);
+    $term->add_defun('cb_click_void', \&cb_click_void);
+    $term->add_defun('start', \&mouse_track_start);
+
+    # Mouse click
+    $term->bind_keyseq("\e[<0;", 'cb_click_0');
+    $term->bind_keyseq("\e[<64;", 'cb_click_void');
+    $term->bind_keyseq("\e[<65;", 'cb_click_void');
+    $term->bind_keyseq("\C-l", 'start');
+}
 
 
 sub mlog {
 	my $in = shift;
-    # open(LOG, '>>/tmp/xterm_monitor');
+    # open LOG, '>>/tmp/xterm_monitor';
     # say LOG "Reply : $in";
+    # close LOG;
 }
 
+sub echo_enable {
+  # Enable (high)
+  say "\e[?1000;1006;1015h";
+}
+
+sub echo_disable {
+  # Disable (low)
+  say "\e[?1000;1006;1015l";
+}
 sub stop_reading {
 	given (shift){
 		when ('m'){ return 1 }
@@ -111,7 +129,21 @@ sub cb_click_0 {
 	$term->{point} = $line_pos;
 }
 
+
 sub cb_click_void {
+    read_keys;
+    echo_disable;
+}
+
+
+sub mouse_track_start {
+    mouse_track_bindings;
+    echo_enable;
+}
+
+sub mouse_track_stop {
+    # mouse_track_bindings;
+    echo_disable;
 }
 
 1;
