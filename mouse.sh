@@ -31,17 +31,20 @@ function mouse_track_log {
   # echo $1 >> /tmp/xterm_monitor
 }
 
+
 function mouse_track_echo_enable {
   # Enable (high)
   echo -ne "\e[?1000;1006;1015h"
   mouse_track_status=1
 }
 
+
 function mouse_track_echo_disable {
   # Disable (low)
   echo -ne "\e[?1000;1006;1015l"
   mouse_track_status=0
 }
+
 
 function mouse_track_read_keys_remaining {
   # Read $keys <- Stdin (until 'm')
@@ -54,13 +57,21 @@ function mouse_track_read_keys_remaining {
   mouse_track_log "keys = $keys"
 }
 
+
 function mouse_track_read_cursor_pos {
   # Read $cursor_pos <- xterm <- readline
+  # Clean stdin
+  mouse_track_read_keys_remaining
+
+  # Ask cursor pos
   echo -en "\E[6n"
+
+  # Read it
   read -sdR cursor_pos
   cursor_pos=${cursor_pos#*[}
   mouse_track_log "cursor_pos $cursor_pos"
 }
+
 
 function mouse_track_trap_disable_mouse {
   # Leave if mouse disabled yet
@@ -79,6 +90,7 @@ function mouse_track_trap_disable_mouse {
   #mouse_track_echo_disable
 }
 
+
 function mouse_track_0_cb {
   local x0 y0 x1 y1 xy col line_pos
   # Callback for mouse button 0 click/release
@@ -89,7 +101,6 @@ function mouse_track_0_cb {
   let y1=${xy##*;}
 
   # Get mouse position (bol)
-  mouse_track_read_keys_remaining
   mouse_track_read_cursor_pos
   x0=${cursor_pos##*;}
   y0=${cursor_pos%%;*}
@@ -111,11 +122,13 @@ function mouse_track_0_cb {
   mouse_track_echo_enable
 }
 
+
 function mouse_track_void_cb {
   # Callback : clean xterm and disable mouse escape
   mouse_track_read_keys_remaining
   mouse_track_echo_disable
 }
+
 
 function mouse_track_bindings {
   # Bindings TODO removable
@@ -135,6 +148,7 @@ function mouse_track_bindings {
   bind '"\C-l": "\C-91\C-92"'
 }
 
+
 function mouse_track_start {
   # Init : Enable mouse tracking
   mouse_track_bindings
@@ -149,7 +163,11 @@ function mouse_track_start {
   mouse_track_echo_enable
 }
 
+
 function mouse_track_stop {
   # Stop : Disable mouse tracking
   mouse_track_echo_disable
+
+  # TODO remove my bindings is the clean way
+  # So I need to separe data and function
 }
