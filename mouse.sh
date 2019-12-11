@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 <<'END_DOC'
     Mouse click to move cursor
 
