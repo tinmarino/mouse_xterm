@@ -24,7 +24,7 @@ END_DOC
 # Escape sequences
 s_echo_enable="\e[?1000;1006;1015h"
 s_echo_disable="\e[?1000;1006;1015l"
-s_echo_get_cursor_pos="\E[6n"
+s_echo_get_cursor_pos="\e[6n"
 
 # Bindins
 ## 91 Clear
@@ -51,11 +51,11 @@ s_macro_3='"\C-93\C-94"'
 
 ## Scrool up
 s_bindx_3='\e[<64;'
-s_macrox_3=mouse_track_void_cb
+s_macrox_3=mouse_track_scroll_up_cb
 
 ## Scrool down
 s_bindx_4='\e[<65;'
-s_macrox_4=mouse_track_void_cb
+s_macrox_4=mouse_track_scroll_down_cb
 
 ## C-l -> reenable the mouse
 s_bind_4='\C-l'
@@ -67,35 +67,36 @@ mouse_track_status=0
 function mouse_track_log {
   # Log for debug
   :
-  # echo $1 >> /tmp/xterm_monitor
+  #printf "%s" "$*" >> /tmp/xterm_monitor
 }
 
 
 function mouse_track_echo_enable {
   # Enable (high)
-  echo -ne "$s_echo_enable"
+  printf "%b" "$s_echo_enable"
   mouse_track_status=1
 }
 
 
 function mouse_track_echo_disable {
   # Disable (low)
-  echo -ne "$s_echo_disable"
+  printf "%b" "$s_echo_disable"
   mouse_track_status=0
 }
 
 
 function mouse_track_read_keys_remaining {
-  # Read $keys <- Stdin (until 'm')
+  # In: Stdin (until 'm')
+  # Out: $g_keys
   mouse_track_log "---------------"
-  keys=""
+  g_keys=""
   # TODO ugly 0.001 sec timeout
   while read -rt 0.001 -n 1 c; do
     mouse_track_log "reading $c"
-    keys="$keys$c"
+    g_keys="$g_keys$c"
     [[ $c == 'M' || $c == 'm' || $c == 'R' || $c == '' ]] && break
   done
-  mouse_track_log "keys = $keys"
+  mouse_track_log "g_keys = $g_keys"
 }
 
 
@@ -106,7 +107,7 @@ function mouse_track_read_cursor_pos {
   mouse_track_read_keys_remaining
 
   # Ask cursor pos
-  echo -en "$s_echo_get_cursor_pos"
+  printf "%b" "$s_echo_get_cursor_pos"
 
   # Read it
   read -srdR cursor_pos
@@ -138,10 +139,10 @@ function mouse_track_0_cb {
 
   # Read rest
   mouse_track_read_keys_remaining
-  mouse_track_log "Mouse click with $keys"
+  mouse_track_log "Mouse click with $g_keys"
 
   # Get click X,y
-  local xy=${keys:0:-1}
+  local xy=${g_keys:0:-1}
   (( x1=${xy%%;*} ))
   (( y1=${xy##*;} ))
   mouse_track_log "x1 = $x1 && y1 = $y1"
@@ -175,6 +176,16 @@ function mouse_track_void_cb {
 }
 
 
+function mouse_track_scroll_up_cb {
+  mouse_track_read_keys_remaining
+  printf "%b" "$s_bindx_3";
+}
+function mouse_track_scroll_down_cb {
+  mouse_track_read_keys_remaining
+  printf "%b" "$s_bindx_4";
+}
+
+
 function mouse_track_bindings {
   # Binds 
   i=("$s_bind_1" "$s_bind_2" "$s_bind_3" "$s_bind_4")
@@ -185,8 +196,8 @@ function mouse_track_bindings {
   done
 
   # Bind -X
-  i=("$s_bindx_1" "$s_bindx_2" "$s_bindx_3" "$s_bindx_4")
-  j=("$s_macrox_1" "$s_macrox_2" "$s_macrox_3" "$s_macrox_4")
+  i=("$s_bindx_1" "$s_bindx_2")  # "$s_bindx_3" "$s_bindx_4")
+  j=("$s_macrox_1" "$s_macrox_2")  # "$s_macrox_3" "$s_macrox_4")
   for (( k=0; k<${#i[@]}; k++ )) ; do
     mouse_track_log "binding -x ${i[k]} -> ${j[k]}"
     bind -x "\"${i[k]}\":${j[k]}"
