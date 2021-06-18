@@ -7,17 +7,29 @@ The following code enables clicks to move cursor in bash/readline on xterm
 
 ## Quickstart
 
-	mkdir Mouse && cd Mouse
-	git clone --depth=1 https://github.com/tinmarino/mouse_xterm .
-	source mouse.sh && mouse_track_start
-	# Press C-l after using mousewhell because it has to disable mouse tracking to work
+In a bash shell, source the [mouse.sh](./mouse.sh).
+
+```bash
+eval "$(curl -X GET https://raw.githubusercontent.com/tinmarino/mouse_xterm/master/mouse.sh)" && mouse_track_start
+# Press C-l after using mousewhell because it has to disable mouse tracking to work
+```
+
+Or permanently:
+  
+```bash
+mkdir Mouse && cd Mouse
+git clone --depth=1 https://github.com/tinmarino/mouse_xterm .
+source mouse.sh && mouse_track_start  # This can be in your bashrc
+```
 
 ## Xterm
 
 Xterm have a mouse tracking feature
 
-	echo -e "\e[?1000;1006;1015h" # Enable tracking
-	echo -e "\e[?1000;1006;1015l" # Disable tracking
+```bash
+echo -e "\e[?1000;1006;1015h" # Enable tracking
+echo -e "\e[?1000;1006;1015l" # Disable tracking
+```
 
 * Mouse click looks like `\e[<0;3;21M` and a release `\e[<0;3;21`. Where `2` is x (from left) and `22` is y (from top)  
 * Mouse whell up : `\e[<64;3;21M`
@@ -28,24 +40,30 @@ Xterm have a mouse tracking feature
 
 Readline can trigger a bash callback
 
-	bind -x '"\e[<64;": mouse_void_cb' # Cannot be put in .inputrc
-	bind    '"\C-h"   : "$(date) \e\C-e\ef\ef\ef\ef\ef"' #Can be put in .inputrc
+```bash
+bind -x '"\e[<64;": mouse_void_cb' # Cannot be put in .inputrc
+bind    '"\C-h"   : "$(date) \e\C-e\ef\ef\ef\ef\ef"' #Can be put in .inputrc
+```
 
 Readline can call multiple functions
 
-	# Mouse cursor to begining-of-line before calling click callback
-	bind    '"\C-98" : beginning-of-line'
-	bind -x '"\C-99" : mouse_0_cb'
-	bind    '"\e[<0;": "\C-98\C-99"'
+```bash
+# Mouse cursor to begining-of-line before calling click callback
+bind    '"\C-98" : beginning-of-line'
+bind -x '"\C-99" : mouse_0_cb'
+bind    '"\e[<0;": "\C-98\C-99"'
+```
 
 Readline callback can change cursor (point) position with `READLINE_POINT` environment variable
 
-	bind -x '"\C-h"  : xterm_test'
-	function xterm_test {
-		echo "line is $READLINE_LINE and point $READLINE_POINT"
-		READLINE_POINT=24    # The cursor position (0 for begining of command)
-		READLINE_LINE='coco' # The command line current content
-	}
+```bash
+bind -x '"\C-h"  : xterm_test'
+function xterm_test {
+  echo "line is $READLINE_LINE and point $READLINE_POINT"
+  READLINE_POINT=24    # The cursor position (0 for begining of command)
+  READLINE_LINE='coco' # The command line current content
+}
+```
 
 ## Perl (reply)
 
