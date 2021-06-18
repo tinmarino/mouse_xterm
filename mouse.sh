@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-<<'END_DOC'
+: <<'END_DOC'
     Mouse click to move cursor
 
   DESCRIPTION :
@@ -20,8 +20,46 @@
     (at your option) any later version.
 END_DOC
 
-source $(dirname $)/variable.sh
 
+# Escape sequences
+s_echo_enable="\e[?1000;1006;1015h"
+s_echo_disable="\e[?1000;1006;1015l"
+s_echo_get_cursor_pos="\E[6n"
+
+# Bindins
+## 91 Clear
+s_bind_1='\C-91'
+s_macro_1=clear-screen
+
+## 93 Beginning of line
+s_bind_2='\C-93'
+s_macro_2=beginning-of-line
+
+## 92 Disable (X)
+s_bindx_1='\C-92'
+s_macrox_1=mouse_track_echo_disable
+
+## 94 Click (X)
+s_bindx_2='\C-94'
+s_macrox_2=mouse_track_0_cb
+
+
+## Click (0) Begining of line + X click cb
+## TODO remove beginning of line
+s_bind_3='\e[<0;'
+s_macro_3='"\C-93\C-94"'
+
+## Scrool up
+s_bindx_3='\e[<64;'
+s_macrox_3=mouse_track_void_cb
+
+## Scrool down
+s_bindx_4='\e[<65;'
+s_macrox_4=mouse_track_void_cb
+
+## C-l -> reenable the mouse
+s_bind_4='\C-l'
+s_macro_4='\"\C-91\C-92\"'
 # Mouse track status : 1 tracking; 0 Not tracking
 mouse_track_status=0
 
@@ -35,14 +73,14 @@ function mouse_track_log {
 
 function mouse_track_echo_enable {
   # Enable (high)
-  echo -ne $s_echo_enable
+  echo -ne "$s_echo_enable"
   mouse_track_status=1
 }
 
 
 function mouse_track_echo_disable {
   # Disable (low)
-  echo -ne $s_echo_disable
+  echo -ne "$s_echo_disable"
   mouse_track_status=0
 }
 
@@ -52,7 +90,7 @@ function mouse_track_read_keys_remaining {
   mouse_track_log "---------------"
   keys=""
   # TODO ugly 0.001 sec timeout
-  while read -t 0.001 -n 1 c; do
+  while read -rt 0.001 -n 1 c; do
     mouse_track_log "reading $c"
     keys="$keys$c"
     [[ $c == 'M' || $c == 'm' || $c == 'R' || $c == '' ]] && break
@@ -68,10 +106,10 @@ function mouse_track_read_cursor_pos {
   mouse_track_read_keys_remaining
 
   # Ask cursor pos
-  echo -en $s_echo_get_cursor_pos
+  echo -en "$s_echo_get_cursor_pos"
 
   # Read it
-  read -sdR cursor_pos
+  read -srdR cursor_pos
   cursor_pos=${cursor_pos#*[}
   mouse_track_log "cursor_pos $cursor_pos"
 }
@@ -96,30 +134,30 @@ function mouse_track_trap_disable_mouse {
 
 function mouse_track_0_cb {
   # Callback for mouse button 0 click/release
-  local x0 y0 x1 y1 xy col line_pos
+  local x0 y0 x1 y1 col line_pos
 
   # Read rest
   mouse_track_read_keys_remaining
   mouse_track_log "Mouse click with $keys"
 
   # Get click X,y
-  xy=${keys:0:-1}
-  let x1=${xy%%;*}
-  let y1=${xy##*;}
+  local xy=${keys:0:-1}
+  (( x1=${xy%%;*} ))
+  (( y1=${xy##*;} ))
   mouse_track_log "x1 = $x1 && y1 = $y1"
 
   # Get mouse position (bol)
   mouse_track_read_cursor_pos
-  x0=${cursor_pos##*;}
-  y0=${cursor_pos%%;*}
+  (( x0=${cursor_pos##*;} ))
+  (( y0=${cursor_pos%%;*} ))
   mouse_track_log "x0 = $x0 && y0 = $y0 && cursor_pos = $cursor_pos"
 
   # Calculate line position
-  let col=$y1-$y0
-  [[ col -lt 0 ]] && let col=0
-  let col=$col*$COLUMNS
-  let line_pos="$x1 - $x0 - 2 + $col"
-  mouse_track_log "col = $col && line_pos = line_pos"
+  (( col = y1 - y0 ))
+  (( col < 0 )) && (( col = 0 ))
+  (( col = col * COLUMNS ))
+  (( line_pos = x1 - x0 - 2 + col ))
+  mouse_track_log "col = $col && line_pos = $line_pos"
   # TODO if too low, put on last line
 
   # Move cursor
@@ -139,19 +177,19 @@ function mouse_track_void_cb {
 
 function mouse_track_bindings {
   # Binds 
-  i=($s_bind_1 $s_bind_2 $s_bind_3 $s_bind_4)
-  j=($s_macro_1 $s_macro_2 $s_macro_3 $s_macro_4)
+  i=("$s_bind_1" "$s_bind_2" "$s_bind_3" "$s_bind_4")
+  j=("$s_macro_1" "$s_macro_2" "$s_macro_3" "$s_macro_4")
   for (( k=0; k<${#i[@]}; k++ )) ; do
     mouse_track_log "binding ${i[k]} -> ${j[k]}"
-    bind \"${i[k]}\":${j[k]}
+    bind "\"${i[k]}\":${j[k]}"
   done
 
   # Bind -X
-  i=($s_bindx_1 $s_bindx_2 $s_bindx_3 $s_bindx_4)
-  j=($s_macrox_1 $s_macrox_2 $s_macrox_3 $s_macrox_4)
+  i=("$s_bindx_1" "$s_bindx_2" "$s_bindx_3" "$s_bindx_4")
+  j=("$s_macrox_1" "$s_macrox_2" "$s_macrox_3" "$s_macrox_4")
   for (( k=0; k<${#i[@]}; k++ )) ; do
     mouse_track_log "binding -x ${i[k]} -> ${j[k]}"
-    bind -x \"${i[k]}\":${j[k]}
+    bind -x "\"${i[k]}\":${j[k]}"
   done
 }
 
