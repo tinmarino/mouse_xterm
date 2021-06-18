@@ -13,7 +13,6 @@ In a bash shell, source [mouse.sh](./mouse.sh).
 
 ```bash
 eval "$(curl -X GET https://raw.githubusercontent.com/tinmarino/mouse_xterm/master/mouse.sh)" && mouse_track_start
-# Press C-l after using mousewhell because it has to disable mouse tracking to work
 ```
 
 Or permanently
@@ -28,8 +27,8 @@ source mouse.sh && mouse_track_start  # This can be in your bashrc
 Xterm have a mouse tracking feature
 
 ```bash
-echo -e "\e[?1000;1006;1015h" # Enable tracking
-echo -e "\e[?1000;1006;1015l" # Disable tracking
+printf '\e[?1000;1006;1015h' # Enable tracking
+printf '\e[?1000;1006;1015l' # Disable tracking
 ```
 
 * Mouse click looks like `\e[<0;3;21M` and a release `\e[<0;3;21`. Where `2` is x (from left) and `22` is y (from top)  
@@ -60,7 +59,7 @@ Readline callback can change cursor (point) position with `READLINE_POINT` envir
 ```bash
 bind -x '"\C-h"  : xterm_test'
 function xterm_test {
-  echo "line is $READLINE_LINE and point $READLINE_POINT"
+  printf "%s" "line is $READLINE_LINE and point $READLINE_POINT"
   READLINE_POINT=24    # The cursor position (0 for begining of command)
   READLINE_LINE='coco' # The command line current content
 }
