@@ -150,8 +150,8 @@ mouse_track_cb_void() {
 
 
 mouse_track_cb_scroll_up() {
-  mouse_track_log 'Cb: Scroll Up'
   mouse_track_read_keys_remaining
+  mouse_track_log "Cb: Scroll Up with: $g_keys"
 
   # Tmux case
   if command -v tmux &> /dev/null \
@@ -162,14 +162,14 @@ mouse_track_cb_scroll_up() {
     return
   fi
 
-  mouse_track_log 'Cb: Scroll Up -> echo esc'
-  printf "%b" "$s_echo_enable$s_bindx_3$g_keys"
+  #mouse_track_cb_void
+  #printf "%b" "$s_echo_enable$s_bindx_3$g_keys"
 }
 
 mouse_track_cb_scroll_down() {
   mouse_track_log 'Cb: Scroll Down'
   mouse_track_read_keys_remaining
-  printf "%b" "$s_echo_enable$s_bindx_4$g_keys"
+  #printf "%b" "$s_echo_enable$s_bindx_4$g_keys"
 }
 
 
@@ -193,7 +193,7 @@ mouse_track_set_bindings() {
   mouse_track_log 'binding: Click -> 93 + 94 (Readline)'
   ## Click (0) Begining of line + X click cb
   ## TODO remove beginning of line
-  bind "\"\033[<0;\":\"$s_bind_to_beginning_of_line$s_bindx_to_click\""
+  bind "\"\033[<0;\":\"\C-93\C-94\""
 }
 
 
