@@ -145,10 +145,7 @@ mouse_track_cb_click() {
   # TODO if too low, put on last line
 
   # Move cursor
-  READLINE_POINT=$line_pos
-
-  # Enable listen for next click
-  mouse_track_echo_enable
+  export READLINE_POINT=$line_pos
 }
 
 
@@ -168,9 +165,20 @@ mouse_track_cb_scroll_up() {
   if command -v tmux &> /dev/null \
       && [[ -n "$TMUX" ]] \
       ; then
-    mouse_track_log 'Cb: Scroll Up -> Tmux'
-    tmux copy-mode -e
-    return
+    # Launch mux scroll:
+    # In job so that realine binding returns before => I can see the current line
+    # In subshell to avoid job control stderr
+    mouse_track_log 'Cb: Scroll Up -> Tmux, lauching job in subshell'
+    ( {
+      sleep 0.01
+      mouse_track_log 'Cb: Scroll Up, tmux async start'
+      tmux copy-mode -e
+      tmux select-pane
+      tmux send-keys -X -N 5 scroll-up
+      mouse_track_log 'Cb: Scroll Up, tmux async finish'
+    } & )
+    mouse_track_log 'Cb: Scroll Up, tmux returning'
+    return 0
   fi
 
   mouse_track_cb_void
@@ -204,10 +212,10 @@ mouse_track_set_bindings() {
 
   mouse_track_log 'binding: Click -> 93 + 94 (Readline)'
   ## Click (0) Begining of line + X click cb
-  bind "\"\033[<0;\":\"$s_bind_to_beginning_of_line$s_bindx_to_click\""
-  # Dichotomically found for xterm
-  bind "\"\033[32;\":\"$s_bind_to_beginning_of_line$s_bindx_to_click\""
-  bind "\"\033[35;\":\"$s_bind_to_beginning_of_line$s_bindx_to_click\""
+  bind "\"\033[<0;\":\"$s_bindx_to_click\""
+  # Dichotomically foun
+  bind "\"\033[32;\":\"$s_bindx_to_click\""
+  bind "\"\033[35;\":\"$s_bindx_to_click\""
 }
 
 
