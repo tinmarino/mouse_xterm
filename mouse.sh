@@ -13,11 +13,14 @@
     xterm, readline
 
   LICENSE :
-    Copyright 2019 Tinmarino <tinmarino@gmail.com>
+    Copyright 2019-2021 Tinmarino <tinmarino@gmail.com>
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+  TODO
+    remove beginning of line
+    Avoid blocking realine if scroll up: I do not see the line
 END_DOC
 
 # Keys (usually output by the terminal)
