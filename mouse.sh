@@ -36,7 +36,8 @@ declare -A g_binding=(
   ["32;"]="mouse_track_cb_click"
   ["35;"]="mouse_track_cb_click"
 )
-
+# Cursor position <string>: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
+g_cursor_pos='1;1'
 
 # Escape sequences
 s_echo_enable='\033[?1000;1006;1015h'
@@ -80,6 +81,7 @@ mouse_track_read_keys_remaining() {
 
 mouse_track_read_cursor_pos() {
   # Read $cursor_pos <- xterm <- readline
+  # Out: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
 
   # Clean stdin
   mouse_track_read_keys_remaining
@@ -88,9 +90,9 @@ mouse_track_read_cursor_pos() {
   printf "%b" "$s_echo_get_cursor_pos"
 
   # Read it
-  read -srdR cursor_pos
-  cursor_pos=${cursor_pos#*[}
-  mouse_track_log "cursor_pos $cursor_pos"
+  read -srdR g_cursor_pos
+  g_cursor_pos=${g_cursor_pos#*[}
+  mouse_track_log "cursor_pos $g_cursor_pos"
 }
 
 
@@ -141,9 +143,9 @@ mouse_track_cb_click() {
 
   # Get mouse position (bol)
   mouse_track_read_cursor_pos
-  (( x0=${cursor_pos##*;} ))
-  (( y0=${cursor_pos%%;*} ))
-  mouse_track_log "x0 = $x0 && y0 = $y0 && cursor_pos = $cursor_pos"
+  (( x0=${g_cursor_pos##*;} ))
+  (( y0=${g_cursor_pos%%;*} ))
+  mouse_track_log "x0 = $x0 && y0 = $y0 && g_cursor_pos = $g_cursor_pos"
 
   # Calculate line position
   (( col = y1 - y0 ))
