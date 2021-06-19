@@ -34,7 +34,7 @@ s_echo_get_cursor_pos='\033[6n'
 mouse_track_log() {
   # Log for debug
   :
-  printf "%s\n" "$*" >> /tmp/xterm_monitor
+  printf "%b\n" "$*"  >> /tmp/xterm_monitor
 }
 
 
@@ -55,7 +55,7 @@ mouse_track_echo_disable() {
 mouse_track_read_keys_remaining() {
   # In: Stdin (until 'm')
   # Out: $g_keys
-  mouse_track_log "---------------"
+  mouse_track_log "--------------- Reading keys"
   g_keys=""
   # TODO ugly 0.001 sec timeout
   while read -rt 0.001 -n 1 c; do
@@ -92,13 +92,13 @@ mouse_track_trap_disable_mouse() {
   # Clauses: leave if ...
   # -- mouse track disabled yet
   [[ $g_mouse_track_status == 0 ]] \
-    || [[ -n "$COMP_LINE" ]] \
-    || [[ "$BASH_COMMAND" == "$PROMPT_COMMAND" ]] \
-    || [[ "$BASH_COMMAND" =~ ^mouse_track* ]] \
-    && { mouse_track_log "trap disregarded (clause)"; return; }
-    # -- bash is completing
-    # -- don't cause a preexec for $PROMPT_COMMAND
-    # -- bind from myself for example at scroll
+      || [[ -n "$COMP_LINE" ]] \
+      || [[ "$BASH_COMMAND" == "$PROMPT_COMMAND" ]] \
+      || [[ "$BASH_COMMAND" =~ ^mouse_track* ]] \
+      && { mouse_track_log "trap disregarded (clause)"; return; }
+      # -- bash is completing
+      # -- don't cause a preexec for $PROMPT_COMMAND
+      # -- bind from myself for example at scroll
 
   # Disable mouse as callback
   mouse_track_log "trap : Stoping mouse tracking"
@@ -114,10 +114,17 @@ mouse_track_cb_click() {
   mouse_track_read_keys_remaining
   mouse_track_log "Mouse click with $g_keys"
 
+  # Only work for M
+  local mode=${g_keys: -1}
+  [[ "$mode" == m ]] && {
+    mouse_track_log "Release ignored"
+    return 0
+  }
+
   # Get click X,y
   local xy=${g_keys:0:-1}
-  (( x1=${xy%%;*} ))
-  (( y1=${xy##*;} ))
+  local x1=${xy%%;*}
+  local y1=${xy##*;}
   mouse_track_log "x1 = $x1 && y1 = $y1"
 
   # Get mouse position (bol)
@@ -145,7 +152,8 @@ mouse_track_cb_click() {
 mouse_track_cb_void() {
   # Callback : clean xterm and disable mouse escape
   mouse_track_read_keys_remaining
-  mouse_track_stop
+  mouse_track_log "Cb: Void with: $g_keys"
+  #mouse_track_stop
 }
 
 
@@ -162,7 +170,7 @@ mouse_track_cb_scroll_up() {
     return
   fi
 
-  #mouse_track_cb_void
+  mouse_track_cb_void
   #printf "%b" "$s_echo_enable$s_bindx_3$g_keys"
 }
 
@@ -174,7 +182,8 @@ mouse_track_cb_scroll_down() {
 
 
 mouse_track_set_bindings() {
-  # Bindings
+  # Set Bindings
+  ## TODO remove beginning of line
 
   mouse_track_log "binding: 93 -> Beginning of line (Readline)"
   local s_bind_to_bol='\C-93'
@@ -192,8 +201,10 @@ mouse_track_set_bindings() {
 
   mouse_track_log 'binding: Click -> 93 + 94 (Readline)'
   ## Click (0) Begining of line + X click cb
-  ## TODO remove beginning of line
-  bind "\"\033[<0;\":\"\C-93\C-94\""
+  bind "\"\033[<0;\":\"$s_bind_to_beginning_of_line$s_bindx_to_click\""
+  # Dichotomically found for xterm
+  bind "\"\033[32;\":\"$s_bind_to_beginning_of_line$s_bindx_to_click\""
+  bind "\"\033[35;\":\"$s_bind_to_beginning_of_line$s_bindx_to_click\""
 }
 
 
