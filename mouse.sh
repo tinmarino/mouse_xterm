@@ -19,14 +19,23 @@
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
   TODO
-    remove beginning of line
-    Avoid blocking realine if scroll up: I do not see the line
+    Tae care of other buttons: 2 and 3 that are entering escpe sequeence in terminal
 END_DOC
 
-# Keys (usually output by the terminal)
-g_keys=''
-# Mouse track status : 1 tracking; 0 Not tracking
+# Keystrokes <string>: usually output by the terminal
+g_key=''
+# Mouse track status <int>: 1 tracking; 0 Not tracking
 g_mouse_track_status=0
+# Binding <dict>: seq -> bash function
+declare -A g_binding=(
+  ["<63;"]="mouse_track_cb_scroll_down"
+  ["<64;"]="mouse_track_cb_scroll_up"
+  ## Click (0) Begining of line + X click cb
+  ["<0;"]="mouse_track_cb_click"
+  # Dichotomically found
+  ["32;"]="mouse_track_cb_click"
+  ["35;"]="mouse_track_cb_click"
+)
 
 
 # Escape sequences
@@ -57,16 +66,16 @@ mouse_track_echo_disable() {
 
 mouse_track_read_keys_remaining() {
   # In: Stdin (until 'm')
-  # Out: $g_keys
+  # Out: $g_key
   mouse_track_log "--------------- Reading keys"
-  g_keys=""
+  g_key=""
   # TODO ugly 0.001 sec timeout
   while read -rt 0.001 -n 1 c; do
     mouse_track_log "reading $c"
-    g_keys="$g_keys$c"
+    g_key="$g_key$c"
     [[ $c == 'M' || $c == 'm' || $c == 'R' || $c == '' ]] && break
   done
-  mouse_track_log "g_keys = $g_keys"
+  mouse_track_log "g_key = $g_key"
 }
 
 mouse_track_read_cursor_pos() {
@@ -115,17 +124,17 @@ mouse_track_cb_click() {
 
   # Read rest
   mouse_track_read_keys_remaining
-  mouse_track_log "Mouse click with $g_keys"
+  mouse_track_log "Mouse click with $g_key"
 
   # Only work for M
-  local mode=${g_keys: -1}
+  local mode=${g_key: -1}
   [[ "$mode" == m ]] && {
     mouse_track_log "Release ignored"
     return 0
   }
 
   # Get click X,y
-  local xy=${g_keys:0:-1}
+  local xy=${g_key:0:-1}
   local x1=${xy%%;*}
   local y1=${xy##*;}
   mouse_track_log "x1 = $x1 && y1 = $y1"
@@ -152,14 +161,14 @@ mouse_track_cb_click() {
 mouse_track_cb_void() {
   # Callback : clean xterm and disable mouse escape
   mouse_track_read_keys_remaining
-  mouse_track_log "Cb: Void with: $g_keys"
+  mouse_track_log "Cb: Void with: $g_key"
   #mouse_track_stop
 }
 
 
 mouse_track_cb_scroll_up() {
   mouse_track_read_keys_remaining
-  mouse_track_log "Cb: Scroll Up with: $g_keys"
+  mouse_track_log "Cb: Scroll Up with: $g_key"
 
   # Tmux case
   if command -v tmux &> /dev/null \
@@ -182,42 +191,33 @@ mouse_track_cb_scroll_up() {
   fi
 
   mouse_track_cb_void
-  #printf "%b" "$s_echo_enable$s_bindx_3$g_keys"
+  #printf "%b" "$s_echo_enable$s_bindx_3$g_key"
 }
 
 mouse_track_cb_scroll_down() {
   mouse_track_log 'Cb: Scroll Down'
   mouse_track_read_keys_remaining
-  #printf "%b" "$s_echo_enable$s_bindx_4$g_keys"
+  #printf "%b" "$s_echo_enable$s_bindx_4$g_key"
 }
 
 
 mouse_track_set_bindings() {
-  # Set Bindings
-  ## TODO remove beginning of line
-
-  mouse_track_log "binding: 93 -> Beginning of line (Readline)"
-  local s_bind_to_bol='\C-93'
-  bind "\"$s_bind_to_bol\":begining-of-line"
-
-  mouse_track_log "binding: 94 -> Click (eXecute)"
-  local s_bindx_to_click='\C-94'
-  bind -x "\"$s_bindx_to_click\":mouse_track_cb_click"
-
-  mouse_track_log 'binding: Scrool up (eXecute)'
-  bind -x "\"\033[<64\":mouse_track_cb_scroll_up"
-
-  mouse_track_log 'binding: Scrool down (eXecute)'
-  bind -x "\"\033[<65;\":mouse_track_cb_scroll_down"
-
-  mouse_track_log 'binding: Click -> 93 + 94 (Readline)'
-  ## Click (0) Begining of line + X click cb
-  bind "\"\033[<0;\":\"$s_bindx_to_click\""
-  # Dichotomically foun
-  bind "\"\033[32;\":\"$s_bindx_to_click\""
-  bind "\"\033[35;\":\"$s_bindx_to_click\""
+  mouse_track_log 'Set bindings'
+  for s_keyseq in "${!g_binding[@]}"; do
+    local s_fct=${g_binding[$s_keyseq]}
+    bind -x "\"\033[$s_keyseq\":$s_fct"
+  done
 }
 
+
+mouse_track_unset_bindings() {
+  # Unset mouse event callback binding
+  mouse_track_log 'Unset bindings'
+  for s_keyseq in "${!g_binding[@]}"; do
+    local s_fct=${g_binding[s_keyseq]}
+    bind -r "$s_keyseq"
+  done
+}
 
 mouse_track_start() {
   # Init : Enable mouse tracking
@@ -235,9 +235,10 @@ mouse_track_start() {
 
 
 mouse_track_stop() {
-  # Stop : Disable mouse tracking
+  # Finish : Disable mouse tracking
+  # Disable mouse tracking
   mouse_track_echo_disable
 
-  # TODO remove my bindings is the clean way
-  # So I need to separe data and function
+  # Unset binding
+  mouse_track_unset_bindings
 }
