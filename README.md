@@ -22,6 +22,11 @@ git clone --depth=1 https://github.com/tinmarino/mouse_xterm Mouse && cd Mouse
 source mouse.sh && mouse_track_start  # This can be in your bashrc
 ```
 
+## TODO
+
+* Create a tmux bind-key to MouseDown1Pane (currently it is select-pane)
+* Take care of other buttons: 2 and 3 that are entering escpe sequeence in terminal
+
 ## Xterm
 
 Xterm have a mouse tracking feature
@@ -29,6 +34,8 @@ Xterm have a mouse tracking feature
 ```bash
 printf '\e[?1000;1006;1015h' # Enable tracking
 printf '\e[?1000;1006;1015l' # Disable tracking
+read  # Read and prrint stdin full escape sequences, escape look like ^[, click like ^[[<0;36;26M
+man console_codes  # Some of them
 ```
 
 * Mouse click looks like `\e[<0;3;21M` and a release `\e[<0;3;21`. Where `2` is x (from left) and `22` is y (from top)  
