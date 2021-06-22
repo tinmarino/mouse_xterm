@@ -27,6 +27,7 @@ source mouse.sh && mouse_track_start  # This can be in your bashrc
 * Create a tmux bind-key to MouseDown1Pane (currently it is select-pane)
 * Take care of other buttons: 2 and 3 that are entering escpe sequeence in terminal
 
+
 ## Xterm
 
 Xterm have a mouse tracking feature
@@ -43,7 +44,9 @@ man console_codes  # Some of them
 * Mouse whell down : `\e[<65;3;21M`
 * Press `C-v` after enabling the mouse tracking to see that
 
-## Bash
+## Bash, Readline
+
+Multiple lines: press <C-v><C-j> for line continuation
 
 Readline can trigger a bash callback
 
@@ -66,11 +69,12 @@ Readline callback can change cursor (point) position with `READLINE_POINT` envir
 ```bash
 bind -x '"\C-h"  : xterm_test'
 function xterm_test {
-  printf "%s" "line is $READLINE_LINE and point $READLINE_POINT"
+  printf "%s" "line is $READLINE_LINE and point $READLINE_POINT and mark $READLINE_LINE"
   READLINE_POINT=24    # The cursor position (0 for begining of command)
   READLINE_LINE='coco' # The command line current content
 }
 ```
+
 
 ## Perl (reply)
 

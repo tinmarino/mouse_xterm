@@ -18,8 +18,6 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-  TODO
-    Tae care of other buttons: 2 and 3 that are entering escpe sequeence in terminal
 END_DOC
 
 # Keystrokes <string>: usually output by the terminal
@@ -32,7 +30,7 @@ declare -A g_binding=(
   ["<64;"]="mouse_track_cb_scroll_up"
   ## Click (0) Begining of line + X click cb
   ["<0;"]="mouse_track_cb_click"
-  # Dichotomically found
+  # Dichotomically found (xterm, 67, 68 maybe too)
   ["32;"]="mouse_track_cb_click"
   ["35;"]="mouse_track_cb_click"
 )
@@ -92,7 +90,7 @@ mouse_track_read_cursor_pos() {
   # Read it
   read -srdR g_cursor_pos
   g_cursor_pos=${g_cursor_pos#*[}
-  mouse_track_log "cursor_pos $g_cursor_pos"
+  mouse_track_log "cursor_pos returns:  $g_cursor_pos"
 }
 
 
@@ -122,11 +120,14 @@ mouse_track_trap_disable_mouse() {
 
 mouse_track_cb_click() {
   # Callback for mouse button 0 click/release
-  local x0 y0 x1 y1 col line_pos
+  local x0 y0 x1 y1 col readline_point
 
   # Read rest
   mouse_track_read_keys_remaining
-  mouse_track_log "Mouse click with $g_key"
+  mouse_track_log "---------------- Mouse click with $g_key"
+
+  # Log readline pre value
+  mouse_track_log "$(echo "Readline pre: $READLINE_POINT, $READLINE_LINE, $READLINE_MARK" | xxd)"
 
   # Only work for M
   local mode=${g_key: -1}
@@ -135,28 +136,35 @@ mouse_track_cb_click() {
     return 0
   }
 
-  # Get click X,y
+  # Get click (x1, y1)
   local xy=${g_key:0:-1}
   local x1=${xy%%;*}
   local y1=${xy##*;}
-  mouse_track_log "x1 = $x1 && y1 = $y1"
 
-  # Get mouse position (bol)
+  # Get Cursor position (x0, y0)
   mouse_track_read_cursor_pos
   (( x0=${g_cursor_pos##*;} ))
   (( y0=${g_cursor_pos%%;*} ))
   mouse_track_log "x0 = $x0 && y0 = $y0 && g_cursor_pos = $g_cursor_pos"
+  mouse_track_log "x1 = $x1 && y1 = $y1"
 
   # Calculate line position
   (( col = y1 - y0 ))
   (( col < 0 )) && (( col = 0 ))
-  (( col = col * COLUMNS ))
-  (( line_pos = x1 - x0 - 2 + col ))
-  mouse_track_log "col = $col && line_pos = $line_pos"
+  readarray -t a_line <<< "$READLINE_LINE"
+  for i in "${a_line[@]}"
+  do
+      mouse_track_log "Array line: $i"
+  done
+  (( readline_point = x1 - x0 - 2 + col * COLUMNS ))
+  mouse_track_log "col = $col && readline_point = $readline_point"
   # TODO if too low, put on last line
 
   # Move cursor
-  export READLINE_POINT=$line_pos
+  export READLINE_POINT=$readline_point
+
+  # Log readline post value
+  mouse_track_log "Readline post: $READLINE_POINT, $READLINE_LINE, $READLINE_MARK"
 }
 
 
