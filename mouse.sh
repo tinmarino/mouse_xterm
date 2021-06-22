@@ -26,20 +26,44 @@ g_key=''
 g_mouse_track_status=0
 # Binding <dict>: seq -> bash function
 declare -A g_binding=(
-  ["<63;"]="mouse_track_cb_scroll_down"
   ["<64;"]="mouse_track_cb_scroll_up"
+  ["<65;"]="mouse_track_cb_scroll_down"
   ## Click (0) Begining of line + X click cb
   ["<0;"]="mouse_track_cb_click"
+  ["<1;"]="mouse_track_cb_click2"
+  ["<2;"]="mouse_track_cb_click3"
+  ["<32;"]="mouse_track_cb_drag1"
   # Dichotomically found (xterm, 67, 68 maybe too)
   ["32;"]="mouse_track_cb_click"
-  ["35;"]="mouse_track_cb_click"
+  ["33;"]="mouse_track_cb_click2"
+  ["34;"]="mouse_track_cb_click3"
 )
+mouse_track_cb_scroll_up() { mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X -N 5 scroll-up'; }
+mouse_track_cb_scroll_down() { mouse_track_tmux_proxy ''; }
+mouse_track_cb_click2() { mouse_track_tmux_proxy 'tmux paste-buffer'; }
+mouse_track_cb_click3() { mouse_track_tmux_proxy "
+  tmux display-menu -T '#[align=centre]#{pane_index} (#{pane_id})' \
+    'Horizontal Split'  'h' 'split-window -h' \
+    'Vertical Split'    'v' 'split-window -v' \
+    'Swap Up'           'u' 'swap-pane -U' \
+    'Swap Down'         'd' 'swap-pane -D' \
+    '#{?pane_marked_set,,-}Swap Marked' 's' 'swap-pane' \
+    'Kill'              'X' 'kill-pane' \
+    'Respawn'           'R' 'respawn-pane -k' \
+    '#{?pane_marked,Unmark,Mark}' 'm' 'select-pane -m'\
+    '#{?window_zoomed_flag,Unzoom,Zoom}' 'z' 'resize-pane -Z'
+  "; }
+mouse_track_cb_drag1() { mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X begin-selection'; }
+
+
 # Cursor position <string>: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
 g_cursor_pos='1;1'
+# Tmux command to launch
+g_tmux_cmd=''
 
 # Escape sequences
-s_echo_enable='\033[?1000;1006;1015h'
-s_echo_disable='\033[?1000;1006;1015l'
+s_echo_enable='\033[?1000;1002;1006;1015h'
+s_echo_disable='\033[?1000;1002;1006;1015l'
 s_echo_get_cursor_pos='\033[6n'
 
 mouse_track_log() {
@@ -47,7 +71,6 @@ mouse_track_log() {
   :
   printf "%b\n" "$*"  >> /tmp/xterm_monitor
 }
-
 
 mouse_track_echo_enable() {
   # Enable (high)
@@ -176,9 +199,15 @@ mouse_track_cb_void() {
 }
 
 
-mouse_track_cb_scroll_up() {
+mouse_track_tmux_get_command(){
+  g_tmux_cmd="$(tmux list-keys -T root "$1" | sed "s/^[^W]*$1 /tmux /")"
+  #g_tmux_cmd="$(echo 'if-shell -F -t = "#{mouse_any_flag}" "send-keys -M" "if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\""')"
+}
+
+mouse_track_tmux_proxy() {
+  local s_tmux_cmd="$1"
   mouse_track_read_keys_remaining
-  mouse_track_log "Cb: Scroll Up with: $g_key"
+  mouse_track_log "Cb: tmux proxy cmd: $s_tmux_cmd, keys remaining: $g_key"
 
   # Tmux case
   if command -v tmux &> /dev/null \
@@ -187,21 +216,20 @@ mouse_track_cb_scroll_up() {
     # Launch mux scroll:
     # In job so that realine binding returns before => I can see the current line
     # In subshell to avoid job control stderr
-    mouse_track_log 'Cb: Scroll Up -> Tmux, lauching job in subshell'
+    mouse_track_log "Cb: tmux proxy2 start job $s_tmux_cmd"
     ( {
       sleep 0.01
-      mouse_track_log 'Cb: Scroll Up, tmux async start'
-      tmux copy-mode -e
-      tmux select-pane
-      tmux send-keys -X -N 5 scroll-up
-      mouse_track_log 'Cb: Scroll Up, tmux async finish'
+      #mouse_track_tmux_get_command "$s_tmux_cmd"
+      # shellcheck disable=SC2046,SC2086  # Quote this to prevent wor
+      eval "$s_tmux_cmd"
+      #tmux if-shell -F -t = "#{||:#{mouse_any_flag},#{pane_in_mode}}" "select-pane -t=; send-keys -M" "display-menu -t= -xM -yM -T \"#[align=centre]#{pane_index} (#{pane_id})\"  '#{?mouse_word,Search For #[underscore]#{=/9/...:mouse_word},}' 'C-r' {copy-mode -t=; send -Xt= search-backward \"#{q:mouse_word}\"} '#{?mouse_word,Type #[underscore]#{=/9/...:mouse_word},}' 'C-y' {send-keys -l -- \"#{q:mouse_word}\"} '#{?mouse_word,Copy #[underscore]#{=/9/...:mouse_word},}' 'c' {set-buffer -- \"#{q:mouse_word}\"} '#{?mouse_line,Copy Line,}' 'l' {set-buffer -- \"#{q:mouse_line}\"} '' 'Horizontal Split' 'h' {split-window -h} 'Vertical Split' 'v' {split-window -v} '' 'Swap Up' 'u' {swap-pane -U} 'Swap Down' 'd' {swap-pane -D} '#{?pane_marked_set,,-}Swap Marked' 's' {swap-pane} '' 'Kill' 'X' {kill-pane} 'Respawn' 'R' {respawn-pane -k} '#{?pane_marked,Unmark,Mark}' 'm' {select-pane -m} '#{?window_zoomed_flag,Unzoom,Zoom}' 'z' {resize-pane -Z}"
+      mouse_track_log "Cb: Button 2, tmux async finish $s_tmux_cmd -> $g_tmux_cmd"
+      mouse_track_log "tmux $g_tmux_cmd"
     } & )
-    mouse_track_log 'Cb: Scroll Up, tmux returning'
     return 0
   fi
 
   mouse_track_cb_void
-  #printf "%b" "$s_echo_enable$s_bindx_3$g_key"
 }
 
 mouse_track_cb_scroll_down() {
