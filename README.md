@@ -47,7 +47,7 @@ man console_codes  # Some of them
 
 ## Bash, Readline
 
-Multiple lines: press <C-v><C-j> for line continuation
+Multiple lines: press `<C-v><C-j>` for line continuation (or just `<C-J>`, if `bind '"\n": self-insert'`)
 
 Readline can trigger a bash callback
 
