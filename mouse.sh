@@ -26,17 +26,17 @@ g_key=''
 g_mouse_track_status=0
 # Binding <dict>: seq -> bash function
 declare -A g_binding=(
-  ["<64;"]="mouse_track_cb_scroll_up"
-  ["<65;"]="mouse_track_cb_scroll_down"
+  [<64;]=mouse_track_cb_scroll_up
+  [<65;]=mouse_track_cb_scroll_down
   ## Click (0) Begining of line + X click cb
-  ["<0;"]="mouse_track_cb_click"
-  ["<1;"]="mouse_track_cb_click2"
-  ["<2;"]="mouse_track_cb_click3"
-  ["<32;"]="mouse_track_cb_drag1"
+  [<0;]=mouse_track_cb_click
+  [<1;]=mouse_track_cb_click2
+  [<2;]=mouse_track_cb_click3
+  [<32;]=mouse_track_cb_drag1
   # Dichotomically found (xterm, 67, 68 maybe too)
-  ["32;"]="mouse_track_cb_click"
-  ["33;"]="mouse_track_cb_click2"
-  ["34;"]="mouse_track_cb_click3"
+  [32;]=mouse_track_cb_click
+  [33;]=mouse_track_cb_click2
+  [34;]=mouse_track_cb_click3
 )
 mouse_track_cb_scroll_up() { mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X -N 5 scroll-up'; }
 mouse_track_cb_scroll_down() { mouse_track_tmux_proxy ''; }
