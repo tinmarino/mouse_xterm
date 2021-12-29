@@ -72,7 +72,7 @@ declare -g gs_echo_get_cursor_pos=$'\033[6n'
 mouse_track_log() {
   # Log for debug
   :
-  printf "%b\n" "$*" >> /tmp/xterm_monitor
+  printf "%b\n" "$*" &>> /tmp/xterm_monitor
 }
 
 mouse_track_echo_enable() {
@@ -138,7 +138,7 @@ mouse_track_read_cursor_pos() {
   #(( gi_cursor_x = ${g_cursor_pos##*;} ))
   #(( gi_cursor_y = ${g_cursor_pos%%;*} ))
 
-  mouse_track_log "cursor_pos returns:  $gi_cursor_x, $gi_cursor_y"
+  mouse_track_log "Cursor_pos returns:  $gi_cursor_x, $gi_cursor_y"
 }
 
 
@@ -168,15 +168,13 @@ mouse_track_trap_disable_mouse() {
 
 mouse_track_cb_click() {
   # Callback for mouse button 0 click/release
-  local x1 y1 col readline_point
+  local -i i=0 i_row_add=0 i_readline_point=0
 
   # Read rest
   mouse_track_read_keys_remaining
+  mouse_track_log
+  mouse_track_log
   mouse_track_log "---------------- Mouse click with $g_key"
-
-  # Log readline pre value
-  mouse_track_log "Readline point, line, mark..."
-  mouse_track_log "$(echo "$READLINE_POINT, $READLINE_LINE, $READLINE_MARK" | xxd)"
 
   # Clause: Only work for M
   local mode=${g_key: -1}
@@ -185,29 +183,58 @@ mouse_track_cb_click() {
     return 0
   }
 
+  # Log readline pre value
+  mouse_track_log "Readline point, line, mark..."
+  mouse_track_log "$(echo "$READLINE_POINT, $READLINE_LINE, $READLINE_MARK" | xxd)"
+
   # Get click (x1, y1)
   local xy=${g_key:0:-1}
-  local x1=${xy%%;*}
-  local y1=${xy##*;}
-  mouse_track_log "x1 = $x1 && y1 = $y1"
+  local -i i_click_x=${xy%%;*}
+  local -i i_click_y=${xy##*;}
+  mouse_track_log "Click: x=$i_click_x, y=$i_click_y"
 
   # Get Cursor position (x0, y0)
   mouse_track_read_cursor_pos
-  mouse_track_log "x0 = $gi_cursor_x && y0 = $gi_cursor_y"
+  mouse_track_log "Cursor: x=$gi_cursor_x, y=$gi_cursor_y"
 
   # Calculate line position
-  (( col = y1 - gi_cursor_y ))
-  (( col < 0 )) && (( col = 0 ))
+  (( i_row_add = i_click_y - gi_cursor_y ))
+  (( i_row_add < 0 )) && (( i_row_add = 0 ))
+
+  # Retrieve lines
   readarray -t a_line <<< "$READLINE_LINE"
-  for i in "${a_line[@]}"; do
-    mouse_track_log "Array line: $i"
+  # -- Log line
+  local s_line
+  for s_line in "${a_line[@]}"; do
+    mouse_track_log "Array line: $s_line"
   done
-  (( readline_point = x1 - gi_cursor_x - 2 + col * COLUMNS ))
-  mouse_track_log "col = $col && readline_point = $readline_point"
+  # -- Parse preceding rows
+  local -i i=0
+  while (( i < i_row_add )); do
+    # Clause: Do not append the last line len
+    # -- So clicking below will position cursor on last line
+    (( i >= ${#a_line[@]} -1 )) && break
+    local s_line=${a_line[$i]}
+    (( i_readline_point += ${#s_line} + 1 ))
+    mouse_track_log "Line: $i => +${#s_line}"
+    (( i += 1 ))
+  done
+
+  mouse_track_log "R1: $i_readline_point"
+  (( i_readline_point += i_click_x - gi_cursor_x ))
+  mouse_track_log "R2: $i_readline_point"
+
+  # The size of my PS1
+  # -- TODO better estimate
+  if (( i_row_add == 0 )); then
+    (( i_readline_point -= 2 ))
+  fi
+
+  mouse_track_log "i_row_add = $i_row_add && i_readline_point = $i_readline_point"
   # TODO if too low, put on last line
 
   # Move cursor
-  export READLINE_POINT=$readline_point
+  export READLINE_POINT=$i_readline_point
 
   # Log readline post value
   mouse_track_log "Readline post: $READLINE_POINT, $READLINE_LINE, $READLINE_MARK"
