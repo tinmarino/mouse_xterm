@@ -287,12 +287,11 @@ mouse_track_ps1_len(){
   mouse_track_log "PS1 (expanded): len=$res, content='$ps'"
   mouse_track_log "$(xxd <<< "$ps")"
 
-  # Add 01
+  # Replace escape codes
   ps=$(sed '
     s/\x1b\[[0-9;]*[a-zA-Z]//g;  # Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
     s/\x01\|\x02//g;    # I dont know where from but in my PS1
   ' <<< "$ps")
-  #ps=$(sed 's/\x01\|\x02//g' <<< "$ps")
 
   # Bye
   res=${#ps}
@@ -384,7 +383,7 @@ mouse_track_start() {
   # Enable mouse tracking after command return
   # -- Append ";" in case PROMPT_COMMAND is already defined
   if [[ ! "$PROMPT_COMMAND" =~ mouse_track_echo_enable\; ]]; then
-    [[ -v PROMPT_COMMAND ]] && [[ -n "$PROMPT_COMMAND" ]] && [[ "${PROMPT_COMMAND: -1}" != ";" ]] && PROMPT_COMMAND+=";"
+    [[ -v PROMPT_COMMAND ]] && [[ -n "$PROMPT_COMMAND" ]] && [[ "${PROMPT_COMMAND: -1}" != ";" ]] && PROMPT_COMMAND+="; "
     export PROMPT_COMMAND+='mouse_track_echo_enable;'
   fi
 
