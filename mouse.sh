@@ -286,13 +286,14 @@ mouse_track_ps1_len(){
   # Log
   res=${#ps}
   mouse_track_log "PS1 (expanded): len=$res, content='$ps'"
-  mouse_track_log "$(xxd <<< "$ps")"
+  mouse_track_log "$(echo "$ps" | xxd)"
 
-  # Replace escape codes
+  # Remove everything 01 and 02"
+  shopt -s extglob
+  ps=${ps//$'\x01'*([^$'\x02'])$'\x02'}
+
+  # Sanitize, in case
   ps=$(LC_ALL=C sed '
-    # Remove \x01..\x02 from \[ and \] (see ref1)
-    s/\x01[^\x02]*\x02//g;
-
     # Safety
     s/\x01\|\x02//g;
 
