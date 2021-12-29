@@ -225,9 +225,9 @@ mouse_track_cb_click() {
   mouse_track_log "R2: $i_readline_point"
 
   # The size of my PS1
-  # -- TODO better estimate
+  local -i i_ps1=$(mouse_track_ps1_len)
   if (( i_row_add == 0 )); then
-    (( i_readline_point -= 2 ))
+    (( i_readline_point -= i_ps1 ))
   fi
 
   mouse_track_log "i_row_add = $i_row_add && i_readline_point = $i_readline_point"
@@ -238,6 +238,23 @@ mouse_track_cb_click() {
 
   # Log readline post value
   mouse_track_log "Readline post: $READLINE_POINT, $READLINE_LINE, $READLINE_MARK"
+}
+
+mouse_track_ps1_len(){
+  local ps=$PS1
+  local -i res=${#PS1}
+  mouse_track_log "PS1 (pre): len=$res, content=$ps"
+  # Just consider last line
+  ps=${ps##*\n} 
+
+  # Expand
+  ps=${ps@P}
+  #ps=$(echo -ne "\n${ps}\033[6n";read -re -s -dR cnt;cnt=$((${cnt#;} - 1));echo $cnt)
+
+  # Get len
+  res=${#ps}
+  mouse_track_log "PS1 (post): len=$res, content=$ps"
+  echo "$res"
 }
 
 
