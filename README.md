@@ -103,3 +103,4 @@ Or to enable at startup write in `.ipython/profile_default/ipython_config.py`
 * [Xterm control sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
 * [Ctrl keys as used in vim source](https://github.com/vim/vim/blob/master/src/libvterm/doc/seqs.txt)
 * [zsh script for mouse tracking](https://github.com/stephane-chazelas/misc-scripts/blob/master/mouse.zsh) : the same but in zsh (not bash)
+* [term-mouse](https://github.com/CoderPuppy/term-mouse): the same but in Js
