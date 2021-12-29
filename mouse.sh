@@ -61,6 +61,11 @@ mouse_track_cb_drag1() { mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys 
 # Cursor position <string>: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
 declare -gi gi_cursor_x=0
 declare -gi gi_cursor_y=0
+
+# Readline begining of line, used to resure the PS1 size (especially x)
+declare -gi gi_bol_x=0
+declare -gi gi_bol_y=0
+
 # Tmux command to launch
 declare -g g_tmux_cmd=''
 
@@ -119,26 +124,50 @@ mouse_track_read_cursor_pos() {
   #g_cursor_pos=${g_cursor_pos#*[}
   #mouse_track_log "cursor_pos returns:  $g_cursor_pos"
   #mouse_track_log "cursor_pos pre"
-  #{
-    #exec < /dev/tty
-    #oldstty=$(stty -g)
-    #stty raw -echo min 0
+  {
+    exec < /dev/tty
+    oldstty=$(stty -g)
+    stty raw -echo min 0
     # Ask cursor pos
     #printf "%b" "$gs_echo_get_cursor_pos" > /dev/tty
     #read -r -d R -p $'\E[6n' -a pos
     #IFS=';' read -r -dR -p $'\e[6n' row col
     IFS=';' read -r -dR -p "$gs_echo_get_cursor_pos" row col
-    #stty "$oldstty"
-  #}
+    #IFS=';' read -r -dR row col
+    stty "$oldstty"
+  }
   row=${row#*[}
 
   # Parse it
-  (( gi_cursor_x = col ))
-  (( gi_cursor_y = row ))
+  if (( $# > 0 )); then
+    (( gi_bol_x = col ))
+    (( gi_bol_y = row ))
+    mouse_track_log "Bol: x=$gi_bol_x, y=$gi_bol_y, POINT=$READLINE_POINT"
+  else
+    (( gi_cursor_x = col ))
+    (( gi_cursor_y = row ))
+    mouse_track_log "Cursor: x=$gi_cursor_x, y=$gi_cursor_y"
+  fi
   #(( gi_cursor_x = ${g_cursor_pos##*;} ))
   #(( gi_cursor_y = ${g_cursor_pos%%;*} ))
 
-  mouse_track_log "Cursor_pos returns:  $gi_cursor_x, $gi_cursor_y"
+}
+
+mouse_track_read_bol(){
+  # Move the cursor to Begining of realine line
+  bind '"\za": beginning-of-line'  # C-a
+  bind '"\ea": end-of-line'  # C-e
+  bind '"\eb": set-mark'  # C-space
+
+  # Move cursor to BOL
+  printf "%b" 'za' > /dev/tty
+  echo -e "\e[12H"
+
+  READLINE_POINT=100
+
+  mouse_track_read_cursor_pos bol
+
+  mouse_track_log "TEMP: $gi_bol_x, $gi_bol_y"
 }
 
 
@@ -195,7 +224,6 @@ mouse_track_cb_click() {
 
   # Get Cursor position (x0, y0)
   mouse_track_read_cursor_pos
-  mouse_track_log "Cursor: x=$gi_cursor_x, y=$gi_cursor_y"
 
   # Calculate line position
   (( i_row_add = i_click_y - gi_cursor_y ))
@@ -248,8 +276,13 @@ mouse_track_ps1_len(){
   ps=${ps##*\n} 
 
   # Expand
-  ps=${ps@P}
-  #ps=$(echo -ne "\n${ps}\033[6n";read -re -s -dR cnt;cnt=$((${cnt#;} - 1));echo $cnt)
+  #ps=${ps@P}
+  res=${#ps}
+  mouse_track_log "PS1 (expanded): len=$res, content=$ps"
+  #ps=$(sed 's/\\\[.*\\\]//g' <<< "$ps")
+  ps=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' <<< "$ps")    # Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
+  res=${#ps}
+  mouse_track_log "PS1 (calculated): len=$res, content=$ps"
 
   # Get len
   res=${#ps}
