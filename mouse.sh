@@ -72,7 +72,7 @@ declare -g gs_echo_get_cursor_pos=$'\033[6n'
 mouse_track_log() {
   # Log for debug
   :
-  printf "%b\n" "$*"  >> /tmp/xterm_monitor
+  printf "%b\n" "$*" >> /tmp/xterm_monitor
 }
 
 mouse_track_echo_enable() {
