@@ -237,24 +237,24 @@ mouse_track_cb_click() {
     mouse_track_log "Array line: $s_line"
   done
   # -- Parse preceding rows
-  local -i i=0
-  while (( i < i_row_add )); do
+  local -i i_current_row=0
+  while (( i_current_row < i_row_add )); do
     # Clause: Do not append the last line len
     # -- So clicking below will position cursor on last line
-    (( i >= ${#a_line[@]} -1 )) && break
-    local s_line=${a_line[$i]}
+    (( i_current_row >= ${#a_line[@]} -1 )) && break
+    local s_line=${a_line[$i_current_row]}
     (( i_readline_point += ${#s_line} + 1 ))
-    mouse_track_log "Line: $i => +${#s_line}"
-    (( i += 1 ))
+    mouse_track_log "Line: $i_current_row => +${#s_line}"
+    (( i_current_row += 1 ))
   done
 
   mouse_track_log "R1: $i_readline_point"
   (( i_readline_point += i_click_x - gi_cursor_x ))
   mouse_track_log "R2: $i_readline_point"
 
-  # The size of my PS1
+  # Substract the size of my PS1
   local -i i_ps1=$(mouse_track_ps1_len)
-  if (( i_row_add == 0 )); then
+  if (( i_current_row == 0 )); then
     (( i_readline_point -= i_ps1 ))
   fi
 
