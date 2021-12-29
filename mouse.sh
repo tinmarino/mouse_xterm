@@ -271,25 +271,35 @@ mouse_track_cb_click() {
 mouse_track_ps1_len(){
   local ps=$PS1
   local -i res=${#PS1}
-  mouse_track_log "PS1 (pre): len=$res, content='$ps'"
-  # Just consider last line
-  ps=${ps##*\n} 
 
-  # Expand
+  # Hi
+  mouse_track_log "PS1 (pre): len=$res, content='$ps'"
+  mouse_track_log "$ps" | xxd
+
+  # Expand: Warning, need bash 4.4
   ps=${ps@P}
+
+  # Just consider last line
+  ps=${ps##*$'\n'}
+
+  # Log
   res=${#ps}
-  mouse_track_log "PS1 (expanded): len=$res, content='\n$(xxd <<<"$ps"))'"
-  #ps=$(sed 's/\\\[.*\\\]//g' <<< "$ps")
-  #ps=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' <<< "$ps")    # Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
+  mouse_track_log "PS1 (expanded): len=$res, content='$ps'"
+  mouse_track_log "$(xxd <<< "$ps")"
+
   # Add 01
-  ps=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' <<< "$ps")    # Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
-  ps=$(sed 's/\x01\|\x02//g' <<< "$ps")    # I dont know where from but in my PS1
+  ps=$(sed '
+    s/\x1b\[[0-9;]*[a-zA-Z]//g;  # Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
+    s/\x01\|\x02//g;    # I dont know where from but in my PS1
+  ' <<< "$ps")
+  #ps=$(sed 's/\x01\|\x02//g' <<< "$ps")
+
+  # Bye
   res=${#ps}
   mouse_track_log "PS1 (calculated): len=$res, content='$ps'"
+  mouse_track_log "$(xxd <<< "$ps")"
 
-  # Get len
-  res=${#ps}
-  mouse_track_log "PS1 (post): len=$res, content='\n$(xxd <<<"$ps"))'"
+  # Return
   echo "$res"
 }
 
@@ -343,6 +353,7 @@ mouse_track_cb_scroll_down() {
 
 
 mouse_track_set_bindings() {
+  # Set all global bindings (mouse event callbacks)
   local s_keyseq=''
   mouse_track_log 'Set bindings'
   for s_keyseq in "${!gd_binding[@]}"; do
@@ -354,8 +365,8 @@ mouse_track_set_bindings() {
 
 
 mouse_track_unset_bindings() {
+  # Unset all global bindings (mouse event callbacks)
   local s_keyseq=''
-  # Unset mouse event callback binding
   mouse_track_log 'Unset bindings'
   for s_keyseq in "${!gd_binding[@]}"; do
     local s_fct=${gd_binding[$s_keyseq]}
