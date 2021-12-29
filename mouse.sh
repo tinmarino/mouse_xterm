@@ -199,9 +199,8 @@ mouse_track_cb_click() {
   (( col = y1 - gi_cursor_y ))
   (( col < 0 )) && (( col = 0 ))
   readarray -t a_line <<< "$READLINE_LINE"
-  for i in "${a_line[@]}"
-  do
-      mouse_track_log "Array line: $i"
+  for i in "${a_line[@]}"; do
+    mouse_track_log "Array line: $i"
   done
   (( readline_point = x1 - gi_cursor_x - 2 + col * COLUMNS ))
   mouse_track_log "col = $col && readline_point = $readline_point"
