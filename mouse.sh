@@ -292,6 +292,8 @@ mouse_track_start() {
   trap 'mouse_track_trap_disable_mouse' DEBUG
 
   # Enable mouse tracking after command return
+  # -- Append ";" in case PROMPT_COMMAND is already defined
+  [[ -v PROMPT_COMMAND ]] && [[ -n "$PROMPT_COMMAND" ]] && [[ "${PROMPT_COMMAND: -1}" != ";" ]] && PROMPT_COMMAND+=";"
   export PROMPT_COMMAND+='mouse_track_echo_enable;'
 
   # Enable now anyway
