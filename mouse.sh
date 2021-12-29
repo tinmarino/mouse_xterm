@@ -197,7 +197,7 @@ mouse_track_trap_disable_mouse() {
 
 mouse_track_cb_click() {
   # Callback for mouse button 0 click/release
-  local -i i=0 i_row_add=0 i_readline_point=0
+  local -i i_row_offset=0 i_readline_point=0
 
   # Read rest
   mouse_track_read_keys_remaining
@@ -226,8 +226,8 @@ mouse_track_cb_click() {
   mouse_track_read_cursor_pos
 
   # Calculate line position
-  (( i_row_add = i_click_y - gi_cursor_y ))
-  (( i_row_add < 0 )) && (( i_row_add = 0 ))
+  (( i_row_offset = i_click_y - gi_cursor_y ))
+  (( i_row_offset < 0 )) && (( i_row_offset = 0 ))
 
   # Retrieve lines
   readarray -t a_line <<< "$READLINE_LINE"
@@ -238,7 +238,7 @@ mouse_track_cb_click() {
   done
   # -- Parse preceding rows
   local -i i_current_row=0
-  while (( i_current_row < i_row_add )); do
+  while (( i_current_row < i_row_offset )); do
     # Clause: Do not append the last line len
     # -- So clicking below will position cursor on last line
     (( i_current_row >= ${#a_line[@]} -1 )) && break
@@ -258,7 +258,7 @@ mouse_track_cb_click() {
     (( i_readline_point -= i_ps1 ))
   fi
 
-  mouse_track_log "i_row_add = $i_row_add && i_readline_point = $i_readline_point"
+  mouse_track_log "i_row_offset = $i_row_offset && i_readline_point = $i_readline_point"
   # TODO if too low, put on last line
 
   # Move cursor
@@ -269,6 +269,7 @@ mouse_track_cb_click() {
 }
 
 mouse_track_ps1_len(){
+  # Ref1: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
   local ps=$PS1
   local -i res=${#PS1}
 
@@ -288,9 +289,22 @@ mouse_track_ps1_len(){
   mouse_track_log "$(xxd <<< "$ps")"
 
   # Replace escape codes
-  ps=$(sed '
-    s/\x1b\[[0-9;]*[a-zA-Z]//g;  # Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
-    s/\x01\|\x02//g;    # I dont know where from but in my PS1
+  ps=$(LC_ALL=C sed '
+    # Remove \x01..\x02 from \[ and \] (see ref1)
+    s/\x01[^\x02]*\x02//g;
+
+    # Safety
+    s/\x01\|\x02//g;
+
+    # Safety Remove OSC https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
+    # 20 .. 7e => printable characters
+    # 07 => BEL
+    # 9C => ST
+    # 1b 5C => ESC + BS
+    s/\x1b\][0-9;]*[\x20-\x7e]*\([\x07\x9C]\|\x1b\\\)//g;
+
+    # Safety: Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
+    s/\x1b\[[0-9;]*[a-zA-Z]//g;
   ' <<< "$ps")
 
   # Bye
