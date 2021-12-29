@@ -293,8 +293,10 @@ mouse_track_start() {
 
   # Enable mouse tracking after command return
   # -- Append ";" in case PROMPT_COMMAND is already defined
-  [[ -v PROMPT_COMMAND ]] && [[ -n "$PROMPT_COMMAND" ]] && [[ "${PROMPT_COMMAND: -1}" != ";" ]] && PROMPT_COMMAND+=";"
-  export PROMPT_COMMAND+='mouse_track_echo_enable;'
+  if [[ ! "$PROMPT_COMMAND" =~ mouse_track_echo_enable\; ]]; then
+    [[ -v PROMPT_COMMAND ]] && [[ -n "$PROMPT_COMMAND" ]] && [[ "${PROMPT_COMMAND: -1}" != ";" ]] && PROMPT_COMMAND+=";"
+    export PROMPT_COMMAND+='mouse_track_echo_enable;'
+  fi
 
   # Enable now anyway
   mouse_track_echo_enable
