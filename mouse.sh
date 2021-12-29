@@ -271,22 +271,25 @@ mouse_track_cb_click() {
 mouse_track_ps1_len(){
   local ps=$PS1
   local -i res=${#PS1}
-  mouse_track_log "PS1 (pre): len=$res, content=$ps"
+  mouse_track_log "PS1 (pre): len=$res, content='$ps'"
   # Just consider last line
   ps=${ps##*\n} 
 
   # Expand
-  #ps=${ps@P}
+  ps=${ps@P}
   res=${#ps}
-  mouse_track_log "PS1 (expanded): len=$res, content=$ps"
+  mouse_track_log "PS1 (expanded): len=$res, content='\n$(xxd <<<"$ps"))'"
   #ps=$(sed 's/\\\[.*\\\]//g' <<< "$ps")
+  #ps=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' <<< "$ps")    # Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
+  # Add 01
   ps=$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' <<< "$ps")    # Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
+  ps=$(sed 's/\x01\|\x02//g' <<< "$ps")    # I dont know where from but in my PS1
   res=${#ps}
-  mouse_track_log "PS1 (calculated): len=$res, content=$ps"
+  mouse_track_log "PS1 (calculated): len=$res, content='$ps'"
 
   # Get len
   res=${#ps}
-  mouse_track_log "PS1 (post): len=$res, content=$ps"
+  mouse_track_log "PS1 (post): len=$res, content='\n$(xxd <<<"$ps"))'"
   echo "$res"
 }
 
