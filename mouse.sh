@@ -230,6 +230,9 @@ mouse_track_cb_click() {
   # Get Cursor position (x0, y0)
   mouse_track_read_cursor_pos
 
+  # Calculate PS1 len
+  local -i i_ps1=$(mouse_track_ps1_len)
+
   # Calculate line position
   (( i_row_offset = i_click_y - gi_cursor_y ))
   (( i_row_offset < 0 )) && (( i_row_offset = 0 ))
@@ -244,14 +247,38 @@ mouse_track_cb_click() {
 
   # Parse preceding rows
   local -i i_current_row=0
-  while (( i_current_row < i_row_offset )); do
+  local -i i_current_sub_row=0  # Wrap
+  while (( i_current_row + i_current_sub_row < i_row_offset )); do
+    # Search wrap
+    local i_max_len=$COLUMNS
+    (( i_current_row == 0 && i_current_sub_row == 0 )) && (( i_max_len -= i_ps1 ))
+    local s_line=${a_line[$i_current_row]}
+    local i_line=${#s_line}
+
+    (( i_current_sub_row > 0 )) \
+      && (( i_line -= COLUMNS * i_current_sub_row - i_ps1 ))
+
     # Clause: Do not append the last line len
     # -- So clicking below will position cursor on last line
-    (( i_current_row >= ${#a_line[@]} -1 )) && break
-    local s_line=${a_line[$i_current_row]}
-    (( i_readline_point += ${#s_line} + 1 ))
-    mouse_track_log "Line: $i_current_row => +${#s_line}"
-    (( i_current_row += 1 ))
+    if (( i_current_row >= ${#a_line[@]} - 1 )) \
+        && (( i_line < i_max_len )); then
+      mouse_track_log "Arith9: break"
+      break
+    fi
+
+    if (( i_line > i_max_len )); then
+      mouse_track_log "Arith0: line:$i_line, max:$i_max_len, col=$COLUMNS, sub=$i_current_sub_row"
+      # Wrap
+      (( i_current_sub_row += 1 ))
+      (( i_readline_point += i_max_len ))
+    else
+      mouse_track_log "Arith1a"
+      (( i_current_row += 1 ))
+      (( i_readline_point += i_line + 1 ))
+    fi
+
+
+    mouse_track_log "Line: $i_current_row, $i_current_sub_row => +${#s_line}"
   done
 
   mouse_track_log "R1: $i_readline_point"
@@ -259,10 +286,8 @@ mouse_track_cb_click() {
   mouse_track_log "R2: $i_readline_point"
 
   # If first line: Substract the size of my PS1
-  local -i i_ps1=$(mouse_track_ps1_len)
-  if (( i_current_row == 0 )); then
-    (( i_readline_point -= i_ps1 ))
-  fi
+  (( i_current_row == 0 && i_current_sub_row == 0 )) \
+    && (( i_readline_point -= i_ps1 ))
 
   mouse_track_log "i_row_offset=$i_row_offset, i_readline_point=$i_readline_point"
 
