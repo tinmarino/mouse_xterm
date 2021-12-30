@@ -77,6 +77,10 @@ declare -gi gb_mouse_track_status=0
 # Tmux command to launch
 declare -g g_tmux_cmd=''
 
+mouse_track_version(){
+  echo '0.01'
+}
+
 mouse_track_log() {
   # Log for debug
   :
