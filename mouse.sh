@@ -169,12 +169,12 @@ mouse_track_read_bol(){
 }
 
 
-mouse_track_trap_disable_mouse() {
+mouse_track_trap_debug() {
   # Trap for stopping track at command spawn (like vim)
   # Callback : traped to debug : Disable XTERM escape
 
   # Log
-  mouse_track_log "trap ($gb_mouse_track_status) for : $BASH_COMMAND"
+  mouse_track_log "trap ($gb_mouse_track_status) for: $BASH_COMMAND"
 
   # Clause: mouse track disabled yet
   (( gb_mouse_track_status == 0 )) \
@@ -196,7 +196,7 @@ mouse_track_trap_disable_mouse() {
   mouse_track_log "trap to disable passed clause. Stoping mouse tracking..."
 
   # Disable mouse as callback
-  mouse_track_stop
+  mouse_track_echo_disable
 }
 
 
@@ -236,12 +236,13 @@ mouse_track_cb_click() {
 
   # Retrieve lines
   readarray -t a_line <<< "$READLINE_LINE"
-  # -- Log line
+  # Log line
   local s_line
   for s_line in "${a_line[@]}"; do
     mouse_track_log "Array line: $s_line"
   done
-  # -- Parse preceding rows
+
+  # Parse preceding rows
   local -i i_current_row=0
   while (( i_current_row < i_row_offset )); do
     # Clause: Do not append the last line len
@@ -257,14 +258,13 @@ mouse_track_cb_click() {
   (( i_readline_point += i_click_x - gi_cursor_x ))
   mouse_track_log "R2: $i_readline_point"
 
-  # Substract the size of my PS1
+  # If first line: Substract the size of my PS1
   local -i i_ps1=$(mouse_track_ps1_len)
   if (( i_current_row == 0 )); then
     (( i_readline_point -= i_ps1 ))
   fi
 
-  mouse_track_log "i_row_offset = $i_row_offset && i_readline_point = $i_readline_point"
-  # TODO if too low, put on last line
+  mouse_track_log "i_row_offset=$i_row_offset, i_readline_point=$i_readline_point"
 
   # Move cursor
   export READLINE_POINT=$i_readline_point
@@ -327,7 +327,6 @@ mouse_track_cb_void() {
   # Callback : clean xterm and disable mouse escape
   mouse_track_read_keys_remaining
   mouse_track_log "Cb: Void with: $g_key"
-  #mouse_track_stop
 }
 
 
@@ -376,7 +375,7 @@ mouse_track_set_bindings() {
   local s_keyseq=''
   mouse_track_log 'Set bindings'
   for s_keyseq in "${!gd_binding[@]}"; do
-    mouse_track_log "keyset: $s_keyseq"
+    mouse_track_log "Bind: $s_keyseq => ${gd_binding[$s_keyseq]}"
     local s_fct=${gd_binding[$s_keyseq]}
     bind -x "\"\033[$s_keyseq\":$s_fct"
   done
@@ -388,8 +387,9 @@ mouse_track_unset_bindings() {
   local s_keyseq=''
   mouse_track_log 'Unset bindings'
   for s_keyseq in "${!gd_binding[@]}"; do
+    mouse_track_log "Unbind: $s_keyseq => ${gd_binding[$s_keyseq]}"
     local s_fct=${gd_binding[$s_keyseq]}
-    bind -r "$s_keyseq"
+    bind -r "\033[$s_keyseq"
   done
 }
 
@@ -405,7 +405,7 @@ mouse_track_start(){
   mouse_track_set_bindings
 
   # Disable mouse tracking before each command
-  trap mouse_track_trap_disable_mouse DEBUG
+  trap mouse_track_trap_debug DEBUG
 
   # Enable mouse tracking after command return
   if [[ ! "$PROMPT_COMMAND" =~ $gs_prompt_command ]]; then
@@ -425,9 +425,9 @@ mouse_track_stop(){
   mouse_track_echo_disable
 
   ## Remove echo_enable from PROMPT_COMMAND
-  #if [[ ! "$PROMPT_COMMAND" =~ $gs_prompt_command ]]; then
-  #  export PROMPT_COMMAND=${PROMPT_COMMAND//$gs_prompt_command/}
-  #fi
+  if [[ ! "$PROMPT_COMMAND" =~ $gs_prompt_command ]]; then
+    export PROMPT_COMMAND=${PROMPT_COMMAND//$gs_prompt_command/}
+  fi
 
   # Unset binding
   mouse_track_unset_bindings
