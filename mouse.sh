@@ -20,7 +20,7 @@
     (at your option) any later version.
 END_DOC
 
-set -u
+#set -u
 
 # Keystrokes <string>: usually output by the terminal
 declare -g g_key=''
