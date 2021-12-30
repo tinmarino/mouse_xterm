@@ -120,6 +120,20 @@ mouse_track_verify_ps1(){
   echo -n "${#ps}"
 }
 
+mouse_track_report(){
+  # Main function to report an issue
+  run(){
+    echo -e "\n\e[34m----------------------------------------------------------"
+    echo -e "Run: $*\e[0m"
+    "$@"
+  }
+  run mouse_track_verify_ps1
+  run pstree -sp $$
+  run uname -a
+  run echo "$PROMPT_COMMAND"
+  run tail -n 500 /tmp/xterm_monitor
+}
+
 mouse_track_log() {
   # Log for debug
   :

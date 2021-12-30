@@ -13,10 +13,7 @@ assignees: ''
 
 ```bash
 eval "$(curl -X GET https://raw.githubusercontent.com/tinmarino/mouse_xterm/master/mouse.sh)" && mouse_track_start
-mouse_track_verify_ps1
-pstree -sp $$
-uname -a
-echo $PROMPT_COMMAND
-# Play with mouse clicks and
-cat /tmp/xterm_monitor
+# Play with mouse, take screenshot
+mouse_track_report
+# Copy paste output here
 ```
