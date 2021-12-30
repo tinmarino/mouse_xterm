@@ -6,7 +6,7 @@
     Your readline cursor should move on mouse click
 
   USAGE :
-    source mouse.sh && mouse_track
+    source mouse.sh && mouse_track_start
     `ctrl+l` to renable track (automatically disable when you want to scrool)
 
   DEPENDS :
@@ -22,10 +22,11 @@ END_DOC
 
 #set -u
 
-# Keystrokes <string>: usually output by the terminal
-declare -g g_key=''
-# Mouse track status <bool>: 1 tracking; 0 Not tracking
-declare -gi gb_mouse_track_status=0
+# Escape sequences
+declare -g gs_echo_enable=$'\033[?1000;1002;1006;1015h'
+declare -g gs_echo_disable=$'\033[?1000;1002;1006;1015l'
+declare -g gs_echo_get_cursor_pos=$'\033[6n'
+
 # Binding <dict>: seq -> bash function
 declare -gA gd_binding=(
   [<64;]=mouse_track_cb_scroll_up
@@ -40,6 +41,7 @@ declare -gA gd_binding=(
   [33;]=mouse_track_cb_click2
   [34;]=mouse_track_cb_click3
 )
+declare -g gs_prompt_command='mouse_track_prompt_command;'
 mouse_track_cb_scroll_up() { mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X -N 5 scroll-up'; }
 mouse_track_cb_scroll_down() { mouse_track_tmux_proxy ''; }
 mouse_track_cb_click2() { mouse_track_tmux_proxy 'tmux paste-buffer'; }
@@ -66,13 +68,14 @@ declare -gi gi_cursor_y=0
 declare -gi gi_bol_x=0
 declare -gi gi_bol_y=0
 
+# Keystrokes <string>: usually output by the terminal
+declare -g g_key=''
+
+# Mouse track status <bool>: 1 tracking; 0 Not tracking
+declare -gi gb_mouse_track_status=0
+
 # Tmux command to launch
 declare -g g_tmux_cmd=''
-
-# Escape sequences
-declare -g gs_echo_enable=$'\033[?1000;1002;1006;1015h'
-declare -g gs_echo_disable=$'\033[?1000;1002;1006;1015l'
-declare -g gs_echo_get_cursor_pos=$'\033[6n'
 
 mouse_track_log() {
   # Log for debug
@@ -97,7 +100,6 @@ mouse_track_echo_disable() {
 mouse_track_read_keys_remaining() {
   # In: Stdin (until 'm')
   # Out: $g_key
-  mouse_track_log "--------------- Reading keys"
   g_key=""
   # TODO ugly 0.001 sec timeout
   while read -rt 0.001 -n 1 c; do
@@ -106,7 +108,6 @@ mouse_track_read_keys_remaining() {
     # M and m for click, R for get_cursor_pos
     [[ $c == M || $c == m || $c == R || $c == '' ]] && break
   done
-  mouse_track_log "g_key = $g_key"
 }
 
 mouse_track_read_cursor_pos() {
@@ -117,7 +118,6 @@ mouse_track_read_cursor_pos() {
 
   # Clean stdin
   mouse_track_read_keys_remaining
-
 
   ## Read it
   #read -srdR g_cursor_pos
@@ -175,22 +175,29 @@ mouse_track_trap_disable_mouse() {
   # Trap for stopping track at command spawn (like vim)
   # Callback : traped to debug : Disable XTERM escape
 
-  # log
+  # Log
   mouse_track_log "trap ($gb_mouse_track_status) for : $BASH_COMMAND"
 
-  # Clauses: leave if ...
-  # -- mouse track disabled yet
-  [[ $gb_mouse_track_status == 0 ]] \
-      || [[ -v COMP_LINE && -n "$COMP_LINE" ]] \
-      || [[ "$BASH_COMMAND" == "$PROMPT_COMMAND" ]] \
-      || [[ "$BASH_COMMAND" =~ ^mouse_track* ]] \
-      && { mouse_track_log "trap disregarded (clause)"; return; }
-      # -- bash is completing
-      # -- don't cause a preexec for $PROMPT_COMMAND
-      # -- bind from myself for example at scroll
+  # Clause: mouse track disabled yet
+  (( gb_mouse_track_status == 0 )) \
+    && { mouse_track_log "trap to disable disregarded (already disabled)"; return; }
+
+  # Clause: bash is completing
+  [[ -v COMP_LINE && -n "$COMP_LINE" ]] \
+    && { mouse_track_log "trap to disable disregarded (completing)"; return; }
+
+  # Clause: don't cause a preexec for $PROMPT_COMMAND
+  [[ "$BASH_COMMAND" == "$PROMPT_COMMAND" ]] \
+    && { mouse_track_log "trap to disable disregarded (prompt command)"; return; }
+
+  # Clause: bound from myself for example at scroll
+  [[ "$BASH_COMMAND" =~ ^mouse_track* ]] \
+    && { mouse_track_log "trap to disable disregarded (self call)"; return; }
+
+  # Log
+  mouse_track_log "trap to disable passed clause. Stoping mouse tracking..."
 
   # Disable mouse as callback
-  mouse_track_log "trap : Stoping mouse tracking"
   mouse_track_stop
 }
 
@@ -388,18 +395,25 @@ mouse_track_unset_bindings() {
   done
 }
 
-mouse_track_start() {
+mouse_track_prompt_command(){
+  # Disable mouse tracking
+  command -v mouse_track_echo_enable &> /dev/null \
+    && mouse_track_echo_enable
+}
+export mouse_track_prompt_command
+
+mouse_track_start(){
   # Init : Enable mouse tracking
   mouse_track_set_bindings
 
   # Disable mouse tracking before each command
-  trap 'mouse_track_trap_disable_mouse' DEBUG
+  trap mouse_track_trap_disable_mouse DEBUG
 
   # Enable mouse tracking after command return
-  # -- Append ";" in case PROMPT_COMMAND is already defined
-  if [[ ! "$PROMPT_COMMAND" =~ mouse_track_echo_enable\; ]]; then
+  if [[ ! "$PROMPT_COMMAND" =~ $gs_prompt_command ]]; then
+    # Append ";" in case PROMPT_COMMAND is already defined
     [[ -v PROMPT_COMMAND ]] && [[ -n "$PROMPT_COMMAND" ]] && [[ "${PROMPT_COMMAND: -1}" != ";" ]] && PROMPT_COMMAND+="; "
-    export PROMPT_COMMAND+='mouse_track_echo_enable;'
+    export PROMPT_COMMAND+=$gs_prompt_command
   fi
 
   # Enable now anyway
@@ -407,10 +421,15 @@ mouse_track_start() {
 }
 
 
-mouse_track_stop() {
+mouse_track_stop(){
   # Finish : Disable mouse tracking
   # Disable mouse tracking
   mouse_track_echo_disable
+
+  ## Remove echo_enable from PROMPT_COMMAND
+  #if [[ ! "$PROMPT_COMMAND" =~ $gs_prompt_command ]]; then
+  #  export PROMPT_COMMAND=${PROMPT_COMMAND//$gs_prompt_command/}
+  #fi
 
   # Unset binding
   mouse_track_unset_bindings
