@@ -107,3 +107,4 @@ Or to enable at startup write in `.ipython/profile_default/ipython_config.py`
 * [Ctrl keys as used in vim source](https://github.com/vim/vim/blob/master/src/libvterm/doc/seqs.txt)
 * [zsh script for mouse tracking](https://github.com/stephane-chazelas/misc-scripts/blob/master/mouse.zsh) : the same but in zsh (not bash)
 * [term-mouse](https://github.com/CoderPuppy/term-mouse): the same but in Js
+* [sso: how to expand PS1](https://stackoverflow.com/questions/3451993/how-to-expand-ps1)

@@ -78,7 +78,46 @@ declare -gi gb_mouse_track_status=0
 declare -g g_tmux_cmd=''
 
 mouse_track_version(){
+  # Used to report issues
   echo '0.01'
+}
+
+mouse_track_verify_ps1(){
+  # Used to report issues
+  # See: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
+  >&2 echo -e "\nP0: Raw"
+  local ps=$PS1
+  echo -n "$ps" | xxd >&2
+
+  >&2 echo -e "\nP1: Expanding (require bash 4.4)"
+  ps=${ps@P}
+  echo -n "$ps" | xxd >&2
+
+  >&2 echo -e "\nP2: Removing everything 01 and 02"
+  shopt -s extglob
+  ps=${ps//$'\x01'*([^$'\x02'])$'\x02'}
+  echo -n "$ps" | xxd >&2
+
+  >&2 echo -e "\nP3: Checking"
+  if [[ "$ps" =~ [\x07\x1b\x9c] ]]; then
+    # Check if escape inside
+    # 07 => BEL
+    # 1b => ESC
+    # 9C => ST
+    >&2 echo 'Warning: There is an escape code in your PS1 which is not betwwen \[ \]'
+    >&2 echo "Tip: put \[ \] around your escape codes (ctlseqs + associated parameters)"
+    echo -n "$ps" | xxd >&2
+  # Check printable characters <= 20 .. 7e, and newline
+  # -- Remove the trailing 0x0a (BEL)
+  elif [[ "$ps" =~ [^[:graph:][:space:]] ]]; then
+    >&2 echo 'Warning: There is a non printable character in PS1 which is not between \[ \]'
+    >&2 echo "Tip: put \[ \] around your escape codes (ctlseqs + associated parameters)"
+    echo "$ps"
+    echo -n "$ps" | xxd >&2
+  fi
+
+  # Echo result
+  echo -n "${#ps}"
 }
 
 mouse_track_log() {
@@ -93,13 +132,11 @@ mouse_track_echo_enable() {
   gb_mouse_track_status=1
 }
 
-
 mouse_track_echo_disable() {
   # Disable (low)
   printf "%b" "$gs_echo_disable"
   gb_mouse_track_status=0
 }
-
 
 mouse_track_read_keys_remaining() {
   # In: Stdin (until 'm')
@@ -172,7 +209,6 @@ mouse_track_read_bol(){
   mouse_track_log "TEMP: $gi_bol_x, $gi_bol_y"
 }
 
-
 mouse_track_trap_debug() {
   # Trap for stopping track at command spawn (like vim)
   # Callback : traped to debug : Disable XTERM escape
@@ -202,7 +238,6 @@ mouse_track_trap_debug() {
   # Disable mouse as callback
   mouse_track_echo_disable
 }
-
 
 mouse_track_cb_click() {
   # Callback for mouse button 0 click/release
@@ -351,13 +386,11 @@ mouse_track_ps1_len(){
   echo "$res"
 }
 
-
 mouse_track_cb_void() {
   # Callback : clean xterm and disable mouse escape
   mouse_track_read_keys_remaining
   mouse_track_log "Cb: Void with: $g_key"
 }
-
 
 mouse_track_tmux_get_command(){
   g_tmux_cmd="$(tmux list-keys -T root "$1" | sed "s/^[^W]*$1 /tmux /")"
@@ -398,7 +431,6 @@ mouse_track_cb_scroll_down() {
   #printf "%b" "$gs_echo_enable$s_bindx_4$g_key"
 }
 
-
 mouse_track_set_bindings() {
   # Set all global bindings (mouse event callbacks)
   local s_keyseq=''
@@ -409,7 +441,6 @@ mouse_track_set_bindings() {
     bind -x "\"\033[$s_keyseq\":$s_fct"
   done
 }
-
 
 mouse_track_unset_bindings() {
   # Unset all global bindings (mouse event callbacks)
@@ -427,7 +458,6 @@ mouse_track_prompt_command(){
   command -v mouse_track_echo_enable &> /dev/null \
     && mouse_track_echo_enable
 }
-export -f mouse_track_prompt_command
 
 mouse_track_start(){
   # Init : Enable mouse tracking
@@ -447,7 +477,6 @@ mouse_track_start(){
   mouse_track_echo_enable
 }
 
-
 mouse_track_stop(){
   # Finish : Disable mouse tracking
   # Disable mouse tracking
@@ -461,3 +490,5 @@ mouse_track_stop(){
   # Unset binding
   mouse_track_unset_bindings
 }
+
+export -f mouse_track_prompt_command
