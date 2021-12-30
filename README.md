@@ -24,9 +24,11 @@ source mouse.sh && mouse_track_start  # This can be in your bashrc
 
 ## TODO
 
+* If at after last character of a line, put cursor at lat char of this line <= and not the next line as calculated now
+* Clearify arithmetic
 * Create a tmux bind-key to MouseDown1Pane (currently it is select-pane)
 * Take care of other buttons: 2 and 3 that are entering escpe sequeence in terminal
-* Pressing Escape and  mouse is escaping the mouse and then do not get the readline binding
+* Pressing Escape and mouse is escaping the mouse and then do not get the readline binding
 
 
 ## Xterm
