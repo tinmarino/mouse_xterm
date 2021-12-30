@@ -42,10 +42,10 @@ declare -gA gd_binding=(
   [34;]=mouse_track_cb_click3
 )
 declare -g gs_prompt_command='mouse_track_prompt_command;'
-mouse_track_cb_scroll_up() { mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X -N 5 scroll-up'; }
-mouse_track_cb_scroll_down() { mouse_track_tmux_proxy ''; }
-mouse_track_cb_click2() { mouse_track_tmux_proxy 'tmux paste-buffer'; }
-mouse_track_cb_click3() { mouse_track_tmux_proxy "
+mouse_track_cb_scroll_up(){ mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X -N 5 scroll-up'; }
+mouse_track_cb_scroll_down(){ mouse_track_tmux_proxy ''; }
+mouse_track_cb_click2(){ mouse_track_tmux_proxy 'tmux paste-buffer'; }
+mouse_track_cb_click3(){ mouse_track_tmux_proxy "
   tmux display-menu -T '#[align=centre]#{pane_index} (#{pane_id})' \
     'Horizontal Split'  'h' 'split-window -h' \
     'Vertical Split'    'v' 'split-window -v' \
@@ -57,7 +57,7 @@ mouse_track_cb_click3() { mouse_track_tmux_proxy "
     '#{?pane_marked,Unmark,Mark}' 'm' 'select-pane -m'\
     '#{?window_zoomed_flag,Unzoom,Zoom}' 'z' 'resize-pane -Z'
   "; }
-mouse_track_cb_drag1() { mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X begin-selection'; }
+mouse_track_cb_drag1(){ mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X begin-selection'; }
 
 
 # Cursor position <string>: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
@@ -70,6 +70,7 @@ declare -gi gi_bol_y=0
 
 # Keystrokes <string>: usually output by the terminal
 declare -g g_key=''
+declare -g gs_ps=''
 
 # Mouse track status <bool>: 1 tracking; 0 Not tracking
 declare -gi gb_mouse_track_status=0
@@ -136,25 +137,25 @@ mouse_track_report(){
   run tail -n 500 "$gs_logfile"
 }
 
-mouse_track_log() {
+mouse_track_log(){
   # Log for debug
   :
   { printf "%b\n" "$*" &>> "$gs_logfile"; } &> /dev/null
 }
 
-mouse_track_echo_enable() {
+mouse_track_echo_enable(){
   # Enable (high)
   printf "%b" "$gs_echo_enable"
   gb_mouse_track_status=1
 }
 
-mouse_track_echo_disable() {
+mouse_track_echo_disable(){
   # Disable (low)
   printf "%b" "$gs_echo_disable"
   gb_mouse_track_status=0
 }
 
-mouse_track_read_keys_remaining() {
+mouse_track_read_keys_remaining(){
   # In: Stdin (until 'm')
   # Out: $g_key
   g_key=""
@@ -165,7 +166,7 @@ mouse_track_read_keys_remaining() {
   done
 }
 
-mouse_track_read_cursor_pos() {
+mouse_track_read_cursor_pos(){
   # Read $cursor_pos <- xterm <- readline
   # Out: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
   # See: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
@@ -224,7 +225,7 @@ mouse_track_read_bol(){
   mouse_track_log "TEMP: $gi_bol_x, $gi_bol_y"
 }
 
-mouse_track_trap_debug() {
+mouse_track_trap_debug(){
   # Trap for stopping track at command spawn (like vim)
   # Callback : traped to debug : Disable XTERM escape
 
@@ -254,7 +255,7 @@ mouse_track_trap_debug() {
   mouse_track_echo_disable
 }
 
-mouse_track_cb_click() {
+mouse_track_cb_click(){
   # Callback for mouse button 0 click/release
   local -i i_row_offset=0 i_readline_point=0
 
@@ -365,30 +366,30 @@ mouse_track_cb_click() {
 
 mouse_track_ps1_len(){
   # Ref1: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
-  local ps=$PS1
+  gs_ps=$PS1
   local -i res=${#PS1}
 
   # Hi
-  mouse_track_log "PS1 (pre): len=$res, content='$ps'"
-  mouse_track_log "$(echo -n "$ps" | xxd)"
+  mouse_track_log "PS1 (pre): len=$res, content='$gs_ps'"
+  mouse_track_log "$(echo -n "$gs_ps" | xxd)"
 
   # Expand: Warning, need bash 4.4
-  ps=${ps@P}
+  gs_ps=${gs_ps@P}
 
   # Just consider last line
-  ps=${ps##*$'\n'}
+  gs_ps=${gs_ps##*$'\n'}
 
   # Log
-  res=${#ps}
-  mouse_track_log "PS1 (expanded): len=$res, content='$ps'"
-  mouse_track_log "$(echo -n "$ps" | xxd)"
+  res=${#gs_ps}
+  mouse_track_log "PS1 (expanded): len=$res, content='$gs_ps'"
+  mouse_track_log "$(echo -n "$gs_ps" | xxd)"
 
   # Remove everything 01 and 02"
   shopt -s extglob
-  ps=${ps//$'\x01'*([^$'\x02'])$'\x02'}
+  gs_ps=${gs_ps//$'\x01'*([^$'\x02'])$'\x02'}
 
   # Sanitize, in case
-  ps=$(LC_ALL=C sed '
+  gs_ps=$(LC_ALL=C sed '
     # Safety
     s/\x01\|\x02//g;
 
@@ -401,18 +402,18 @@ mouse_track_ps1_len(){
 
     # Safety: Remove all escape sequences https://superuser.com/questions/380772/removing-ansi-color-codes-from-text-stream
     s/\x1b\[[0-9;]*[a-zA-Z]//g;
-  ' <<< "$ps")
+  ' <<< "$gs_ps")
 
   # Bye
-  res=${#ps}
-  mouse_track_log "PS1 (calculated): len=$res, content='$ps'"
-  mouse_track_log "$(echo -n "$ps" | xxd)"
+  res=${#gs_ps}
+  mouse_track_log "PS1 (calculated): len=$res, content='$gs_ps'"
+  mouse_track_log "$(echo -n "$gs_ps" | xxd)"
 
   # Return
   echo "$res"
 }
 
-mouse_track_cb_void() {
+mouse_track_cb_void(){
   # Callback : clean xterm and disable mouse escape
   mouse_track_read_keys_remaining
   mouse_track_log "Cb: Void with: $g_key"
@@ -423,7 +424,7 @@ mouse_track_tmux_get_command(){
   #g_tmux_cmd="$(echo 'if-shell -F -t = "#{mouse_any_flag}" "send-keys -M" "if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\""')"
 }
 
-mouse_track_tmux_proxy() {
+mouse_track_tmux_proxy(){
   local s_tmux_cmd="$1"
   mouse_track_read_keys_remaining
   mouse_track_log "Cb: tmux proxy cmd: $s_tmux_cmd, keys remaining: $g_key"
@@ -451,13 +452,13 @@ mouse_track_tmux_proxy() {
   mouse_track_cb_void
 }
 
-mouse_track_cb_scroll_down() {
+mouse_track_cb_scroll_down(){
   mouse_track_log 'Cb: Scroll Down'
   mouse_track_read_keys_remaining
   #printf "%b" "$gs_echo_enable$s_bindx_4$g_key"
 }
 
-mouse_track_set_bindings() {
+mouse_track_set_bindings(){
   # Set all global bindings (mouse event callbacks)
   local s_keyseq=''
   mouse_track_log 'Set bindings'
@@ -468,7 +469,7 @@ mouse_track_set_bindings() {
   done
 }
 
-mouse_track_unset_bindings() {
+mouse_track_unset_bindings(){
   # Unset all global bindings (mouse event callbacks)
   local s_keyseq=''
   mouse_track_log 'Unset bindings'
