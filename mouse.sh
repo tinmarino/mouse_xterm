@@ -137,7 +137,7 @@ mouse_track_report(){
 mouse_track_log() {
   # Log for debug
   :
-  printf "%b\n" "$*" &>> /tmp/xterm_monitor
+  { printf "%b\n" "$*" &>> /tmp/xterm_monitor; } &> /dev/null
 }
 
 mouse_track_echo_enable() {
