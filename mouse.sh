@@ -77,6 +77,8 @@ declare -gi gb_mouse_track_status=0
 # Tmux command to launch
 declare -g g_tmux_cmd=''
 
+declare -g gs_logfile="${TMPDIR:-/tmp}/xterm_monitor.log"
+
 mouse_track_version(){
   # Used to report issues
   echo '0.01'
@@ -131,13 +133,13 @@ mouse_track_report(){
   run pstree -sp $$
   run uname -a
   run echo "$PROMPT_COMMAND"
-  run tail -n 500 /tmp/xterm_monitor
+  run tail -n 500 "$gs_logfile"
 }
 
 mouse_track_log() {
   # Log for debug
   :
-  { printf "%b\n" "$*" &>> /tmp/xterm_monitor; } &> /dev/null
+  { printf "%b\n" "$*" &>> "$gs_logfile"; } &> /dev/null
 }
 
 mouse_track_echo_enable() {
@@ -156,8 +158,7 @@ mouse_track_read_keys_remaining() {
   # In: Stdin (until 'm')
   # Out: $g_key
   g_key=""
-  # TODO ugly 0.001 sec timeout
-  while read -rt 0.001 -n 1 c; do
+  while read -r -n 1 c; do
     g_key="$g_key$c"
     # M and m for click, R for get_cursor_pos
     [[ $c == M || $c == m || $c == R || $c == '' ]] && break
@@ -262,6 +263,12 @@ mouse_track_cb_click() {
   mouse_track_log
   mouse_track_log
   mouse_track_log "---------------- Mouse click with $g_key"
+
+  # Clause: g_key defined: I need coordinates
+  [[ -z "$g_key" ]] && {
+    mouse_track_log "WARNING: a click without coordinate associated"
+    return 0
+  }
 
   # Clause: Only work for M
   local mode=${g_key: -1}
