@@ -400,7 +400,7 @@ mouse_track_prompt_command(){
   command -v mouse_track_echo_enable &> /dev/null \
     && mouse_track_echo_enable
 }
-export mouse_track_prompt_command
+export -f mouse_track_prompt_command
 
 mouse_track_start(){
   # Init : Enable mouse tracking
