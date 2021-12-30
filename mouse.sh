@@ -301,13 +301,15 @@ mouse_track_cb_click() {
   readarray -t a_line <<< "$READLINE_LINE"
   # Log line
   local s_line
+  local -i i_line_log=1
   for s_line in "${a_line[@]}"; do
-    mouse_track_log "Array line: $s_line"
+    mouse_track_log "Array line: $((i_line_log++)): $s_line"
   done
 
   # Parse preceding rows
   local -i i_current_row=0
   local -i i_current_sub_row=0  # Wrap
+  local -i i_visual_row=0  # sum
   while (( i_current_row + i_current_sub_row < i_row_offset )); do
     # Search wrap
     local i_max_len=$COLUMNS
@@ -320,25 +322,28 @@ mouse_track_cb_click() {
 
     # Clause: Do not append the last line len
     # -- So clicking below will position cursor on last line
-    if (( i_current_row >= ${#a_line[@]} - 1 )) \
-        && (( i_line < i_max_len )); then
+    # Todo, this does no take long wrap into account, and break too fast
+    if (( i_visual_row == i_row_offset )); then
+        # && (( i_line < i_max_len )); then
       mouse_track_log "Arith9: break"
       break
     fi
+
+    mouse_track_log "Line: $i_current_row + $i_current_sub_row = $i_visual_row, point0=$i_readline_point"
 
     if (( i_line > i_max_len )); then
       mouse_track_log "Arith0: line:$i_line, max:$i_max_len, col=$COLUMNS, sub=$i_current_sub_row"
       # Wrap
       (( i_current_sub_row += 1 ))
       (( i_readline_point += i_max_len ))
+      (( i_visual_row +=1 ))
     else
-      mouse_track_log "Arith1a"
+      mouse_track_log "Arith1: line:$i_line, max:$i_max_len, col=$COLUMNS, sub=$i_current_sub_row"
       (( i_current_row += 1 ))
+      (( i_current_sub_row = 0 ))
       (( i_readline_point += i_line + 1 ))
+      (( i_visual_row +=1 ))
     fi
-
-
-    mouse_track_log "Line: $i_current_row, $i_current_sub_row => +${#s_line}"
   done
 
   mouse_track_log "R1: $i_readline_point"
