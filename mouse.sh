@@ -103,7 +103,6 @@ mouse_track_read_keys_remaining() {
   g_key=""
   # TODO ugly 0.001 sec timeout
   while read -rt 0.001 -n 1 c; do
-    mouse_track_log "reading $c"
     g_key="$g_key$c"
     # M and m for click, R for get_cursor_pos
     [[ $c == M || $c == m || $c == R || $c == '' ]] && break
@@ -150,7 +149,6 @@ mouse_track_read_cursor_pos() {
   fi
   #(( gi_cursor_x = ${g_cursor_pos##*;} ))
   #(( gi_cursor_y = ${g_cursor_pos%%;*} ))
-
 }
 
 mouse_track_read_bol(){
@@ -282,7 +280,7 @@ mouse_track_ps1_len(){
 
   # Hi
   mouse_track_log "PS1 (pre): len=$res, content='$ps'"
-  mouse_track_log "$ps" | xxd
+  mouse_track_log "$(echo -n "$ps" | xxd)"
 
   # Expand: Warning, need bash 4.4
   ps=${ps@P}
@@ -293,7 +291,7 @@ mouse_track_ps1_len(){
   # Log
   res=${#ps}
   mouse_track_log "PS1 (expanded): len=$res, content='$ps'"
-  mouse_track_log "$(echo "$ps" | xxd)"
+  mouse_track_log "$(echo -n "$ps" | xxd)"
 
   # Remove everything 01 and 02"
   shopt -s extglob
@@ -318,7 +316,7 @@ mouse_track_ps1_len(){
   # Bye
   res=${#ps}
   mouse_track_log "PS1 (calculated): len=$res, content='$ps'"
-  mouse_track_log "$(xxd <<< "$ps")"
+  mouse_track_log "$(echo -n "$ps" | xxd)"
 
   # Return
   echo "$res"
