@@ -24,6 +24,8 @@ source mouse.sh && mouse_track_start  # This can be in your bashrc
 
 ## TODO
 
+* Fix: sleep at read cursor if keep cmouse click
+* Add date to log
 * If at after last character of a line, put cursor at lat char of this line <= and not the next line as calculated now
 * Avoid terminal  blinking when trigger readline
 * Clearify arithmetic
