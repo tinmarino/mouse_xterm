@@ -24,15 +24,12 @@ source mouse.sh && mouse_track_start  # This can be in your bashrc
 
 ## TODO
 
-* Fix: sleep at read cursor if keep cmouse click
-* Add date to log
 * If at after last character of a line, put cursor at lat char of this line <= and not the next line as calculated now
 * Avoid terminal  blinking when trigger readline
 * Clearify arithmetic
 * Create a tmux bind-key to MouseDown1Pane (currently it is select-pane)
 * Take care of other buttons: 2 and 3 that are entering escpe sequeence in terminal
 * Pressing Escape and mouse is escaping the mouse and then do not get the readline binding
-
 
 ## Xterm
 

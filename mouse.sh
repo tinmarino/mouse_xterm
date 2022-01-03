@@ -36,6 +36,8 @@ declare -gA gd_binding=(
   [<1;]=mouse_track_cb_click2
   [<2;]=mouse_track_cb_click3
   [<32;]=mouse_track_cb_drag1
+  [<33;]=mouse_track_cb_void  # middle
+  [<34;]=mouse_track_cb_void  # right
   # Dichotomically found (xterm, 67, 68 maybe too)
   [32;]=mouse_track_cb_click
   [33;]=mouse_track_cb_click2
@@ -58,6 +60,8 @@ mouse_track_cb_click3(){ mouse_track_tmux_proxy "
     '#{?window_zoomed_flag,Unzoom,Zoom}' 'z' 'resize-pane -Z'
   "; }
 mouse_track_cb_drag1(){ mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X begin-selection'; }
+mouse_track_cb_drag2(){ mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X begin-selection'; }
+mouse_track_cb_drag3(){ mouse_track_tmux_proxy 'tmux copy-mode -e \; send-keys -X begin-selection'; }
 
 
 # Cursor position <string>: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
@@ -140,7 +144,7 @@ mouse_track_report(){
 mouse_track_log(){
   # Log for debug
   :
-  { printf "%b\n" "$*" &>> "$gs_logfile"; } &> /dev/null
+  { printf "%b\n" "$(date +"%T.%3N"): $*" &>> "$gs_logfile"; } &> /dev/null
 }
 
 mouse_track_echo_enable(){
@@ -157,9 +161,11 @@ mouse_track_echo_disable(){
 
 mouse_track_read_keys_remaining(){
   # In: Stdin (until 'm')
+  # :arg1: timout in second
+  local timeout=${1:-0.001}
   # Out: $g_key
   g_key=""
-  while read -r -n 1 c; do
+  while read -r -n 1 -t "$timeout" c; do
     g_key="$g_key$c"
     # M and m for click, R for get_cursor_pos
     [[ $c == M || $c == m || $c == R || $c == '' ]] && break
@@ -170,10 +176,10 @@ mouse_track_read_cursor_pos(){
   # Read $cursor_pos <- xterm <- readline
   # Out: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
   # See: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
-  local row=0 col=0
+  local row=0 col=0  # Cannot be declared as integer. read command would fail
 
   # Clean stdin
-  mouse_track_read_keys_remaining
+  mouse_track_read_keys_remaining 0.001
 
   ## Read it
   #read -srdR g_cursor_pos
@@ -182,7 +188,7 @@ mouse_track_read_cursor_pos(){
   #mouse_track_log "cursor_pos pre"
   {
     exec < /dev/tty
-    oldstty=$(stty -g)
+    local s_oldstty=$(stty -g)
     stty raw -echo min 0
     # Ask cursor pos
     #printf "%b" "$gs_echo_get_cursor_pos" > /dev/tty
@@ -190,9 +196,11 @@ mouse_track_read_cursor_pos(){
     #IFS=';' read -r -dR -p $'\e[6n' row col
     IFS=';' read -r -dR -p "$gs_echo_get_cursor_pos" row col
     #IFS=';' read -r -dR row col
-    stty "$oldstty"
+    stty "$s_oldstty"
   }
   row=${row#*[}
+
+  mouse_track_log "Pos: x=$col, $row"
 
   # Parse it
   if (( $# > 0 )); then
@@ -256,11 +264,26 @@ mouse_track_trap_debug(){
 }
 
 mouse_track_cb_click(){
-  # Callback for mouse button 0 click/release
+  : 'Callback for mouse button 0 click/release'
+
+  # Disable mouse to avoid an other click during the call
+  mouse_track_echo_disable
+  trap mouse_track_echo_enable RETURN
+
+  # Redraw to avoid long blink (still have a short one)
+  echo -ne "\e[0n"  # redraw-current-line
+
+  mouse_track_read_keys_remaining 0.001
+
+  # TODO
+  # Do not accept input while processing
+  #{
+  #exec < /dev/tty
+  ##local s_oldstty=$(stty -g)
+  #stty raw -echo min 0
+
   local -i i_row_offset=0 i_readline_point=0
 
-  # Read rest
-  mouse_track_read_keys_remaining
   mouse_track_log
   mouse_track_log
   mouse_track_log "---------------- Mouse click with $g_key"
@@ -362,6 +385,14 @@ mouse_track_cb_click(){
 
   # Log readline post value
   mouse_track_log "Readline post: $READLINE_POINT, $READLINE_LINE, $READLINE_MARK"
+
+  # TODO
+  # Restore ssty
+  #stty "$s_oldstty"
+
+  # Redraw to avoid waiting for user action
+  echo -ne "\e[0n"  # redraw-current-line
+  #stty echo
 }
 
 mouse_track_ps1_len(){
@@ -415,7 +446,7 @@ mouse_track_ps1_len(){
 
 mouse_track_cb_void(){
   # Callback : clean xterm and disable mouse escape
-  mouse_track_read_keys_remaining
+  mouse_track_read_keys_remaining 0.001
   mouse_track_log "Cb: Void with: $g_key"
 }
 
@@ -426,7 +457,7 @@ mouse_track_tmux_get_command(){
 
 mouse_track_tmux_proxy(){
   local s_tmux_cmd="$1"
-  mouse_track_read_keys_remaining
+  mouse_track_read_keys_remaining 0.001
   mouse_track_log "Cb: tmux proxy cmd: $s_tmux_cmd, keys remaining: $g_key"
 
   # Tmux case
@@ -454,7 +485,7 @@ mouse_track_tmux_proxy(){
 
 mouse_track_cb_scroll_down(){
   mouse_track_log 'Cb: Scroll Down'
-  mouse_track_read_keys_remaining
+  mouse_track_read_keys_remaining 0.001
   #printf "%b" "$gs_echo_enable$s_bindx_4$g_key"
 }
 
