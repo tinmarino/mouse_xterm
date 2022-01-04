@@ -24,7 +24,6 @@ source mouse.sh && mouse_track_start  # This can be in your bashrc
 
 ## TODO
 
-* If at after last character of a line, put cursor at lat char of this line <= and not the next line as calculated now
 * Avoid terminal blinking when trigger readline
 * Clearify arithmetic
 * Create a tmux bind-key to MouseDown1Pane (currently it is select-pane)
@@ -103,6 +102,7 @@ Or to enable at startup write in `.ipython/profile_default/ipython_config.py`
 
 ## Changelog
 
+* Feature: If at after last character of a line, put cursor at lat char of this line <= and not the next line as calculated now
 * Get log with call depth
 * Fix: sleep at read cursor if keep cmouse click
 * Add date to log

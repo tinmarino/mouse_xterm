@@ -279,12 +279,12 @@ mouse_track_trap_debug(){
 mouse_track_cb_click(){
   : 'Callback for mouse button 0 click/release'
 
-  # Disable mouse to avoid an other click during the call
-  #mouse_track_echo_disable
-  #trap mouse_track_echo_enable RETURN
-
   # Redraw to avoid long blink (still have a short one)
-  #echo -ne "\e[0n"  # redraw-current-line
+  echo -ne "\e[0n"  # redraw-current-line
+
+  # Disable mouse to avoid an other click during the call
+  mouse_track_echo_disable
+  trap mouse_track_echo_enable RETURN
 
   mouse_track_read_keys_remaining 0.001
 
@@ -422,7 +422,7 @@ mouse_track_cb_click(){
   } </dev/null
 
   # Redraw to avoid waiting for user action
-  #echo -ne "\e[0n"  # redraw-current-line
+  echo -ne "\e[0n"  # redraw-current-line
   #stty echo
 }
 
