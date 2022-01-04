@@ -24,6 +24,7 @@ source mouse.sh && mouse_track_start  # This can be in your bashrc
 
 ## TODO
 
+* Get log with call depth
 * If at after last character of a line, put cursor at lat char of this line <= and not the next line as calculated now
 * Avoid terminal  blinking when trigger readline
 * Clearify arithmetic
@@ -100,6 +101,11 @@ Or to enable at startup write in `.ipython/profile_default/ipython_config.py`
 * OK : bash, ipython3, tmux
 * NO : python, reply
 * DISABLED : vim
+
+## Changelog
+
+* Fix: sleep at read cursor if keep cmouse click
+* Add date to log
 
 ## Links
 

@@ -144,7 +144,9 @@ mouse_track_report(){
 mouse_track_log(){
   # Log for debug
   :
-  { printf "%b\n" "$(date +"%T.%3N"): $*" &>> "$gs_logfile"; } &> /dev/null
+  local s_pad_template=--------------------------------------------
+  local s_pad="${s_pad_template:0:$(( (${#FUNCNAME[@]} - 1) * 2 ))}"
+  { printf "%s: %s %b\n" "$(date +"%T.%3N")" "$s_pad" "$*" &>> "$gs_logfile"; } &> /dev/null
 }
 
 mouse_track_echo_enable(){
@@ -170,6 +172,8 @@ mouse_track_read_keys_remaining(){
     # M and m for click, R for get_cursor_pos
     [[ $c == M || $c == m || $c == R || $c == '' ]] && break
   done
+
+  mouse_track_log "Read: '$g_key'"
 }
 
 mouse_track_read_cursor_pos(){
@@ -271,9 +275,10 @@ mouse_track_cb_click(){
   trap mouse_track_echo_enable RETURN
 
   # Redraw to avoid long blink (still have a short one)
-  echo -ne "\e[0n"  # redraw-current-line
+  #echo -ne "\e[0n"  # redraw-current-line
 
   mouse_track_read_keys_remaining 0.001
+  #sleep 1
 
   # TODO
   # Do not accept input while processing
@@ -391,7 +396,7 @@ mouse_track_cb_click(){
   #stty "$s_oldstty"
 
   # Redraw to avoid waiting for user action
-  echo -ne "\e[0n"  # redraw-current-line
+  #echo -ne "\e[0n"  # redraw-current-line
   #stty echo
 }
 
