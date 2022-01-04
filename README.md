@@ -40,6 +40,7 @@ printf '\e[?1000;1006;1015h' # Enable tracking
 printf '\e[?1000;1006;1015l' # Disable tracking
 read  # Read and prrint stdin full escape sequences, escape look like ^[, click like ^[[<0;36;26M
 man console_codes  # Some of them
+vim /usr/share/doc/xterm/ctlseqs.txt.gz  # ctlseqs local documentation
 ```
 
 * Mouse click looks like `\e[<0;3;21M` and a release `\e[<0;3;21`. Where `2` is x (from left) and `22` is y (from top)  
