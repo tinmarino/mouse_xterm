@@ -176,14 +176,21 @@ mouse_track_read_keys_remaining(){
   mouse_track_log "Read: '$g_key'"
 }
 
+mouse_track_consume_keys(){
+  local s_consumed=''
+  while read -r -n 1 -t 0.001 c; do
+    s_consumed="$s_consumed$c"
+  done
+
+  mouse_track_log "Consumed: '$s_consumed'"
+}
+
 mouse_track_read_cursor_pos(){
   # Read $cursor_pos <- xterm <- readline
   # Out: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
   # See: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
   local row=0 col=0  # Cannot be declared as integer. read command would fail
 
-  # Clean stdin
-  mouse_track_read_keys_remaining 0.001
 
   ## Read it
   #read -srdR g_cursor_pos
@@ -191,7 +198,9 @@ mouse_track_read_cursor_pos(){
   #mouse_track_log "cursor_pos returns:  $g_cursor_pos"
   #mouse_track_log "cursor_pos pre"
   {
-    exec < /dev/tty
+    # Clean stdin
+    mouse_track_consume_keys
+    #exec < /dev/tty
     local s_oldstty=$(stty -g)
     stty raw -echo min 0
     # Ask cursor pos
@@ -201,7 +210,7 @@ mouse_track_read_cursor_pos(){
     IFS=';' read -r -dR -p "$gs_echo_get_cursor_pos" row col
     #IFS=';' read -r -dR row col
     stty "$s_oldstty"
-  }
+  } </dev/tty
   row=${row#*[}
 
   mouse_track_log "Pos: x=$col, $row"
@@ -271,21 +280,22 @@ mouse_track_cb_click(){
   : 'Callback for mouse button 0 click/release'
 
   # Disable mouse to avoid an other click during the call
-  mouse_track_echo_disable
-  trap mouse_track_echo_enable RETURN
+  #mouse_track_echo_disable
+  #trap mouse_track_echo_enable RETURN
 
   # Redraw to avoid long blink (still have a short one)
   #echo -ne "\e[0n"  # redraw-current-line
 
   mouse_track_read_keys_remaining 0.001
-  #sleep 1
 
   # TODO
   # Do not accept input while processing
-  #{
-  #exec < /dev/tty
-  ##local s_oldstty=$(stty -g)
+  {
+  #exec < /dev/null
+  #jlocal s_oldstty=$(stty -g)
   #stty raw -echo min 0
+
+  #sleep 1
 
   local -i i_row_offset=0 i_readline_point=0
 
@@ -306,9 +316,9 @@ mouse_track_cb_click(){
     return 0
   }
 
-  # Log readline pre value
-  mouse_track_log "Readline point, line, mark..."
-  mouse_track_log "$(echo "$READLINE_POINT, $READLINE_LINE, $READLINE_MARK" | xxd)"
+  # # Log readline pre value
+  # mouse_track_log "Readline point, line, mark..."
+  # mouse_track_log "$(echo "$READLINE_POINT, $READLINE_LINE, $READLINE_MARK" | xxd)"
 
   # Get click (x1, y1)
   local xy=${g_key:0:-1}
@@ -335,55 +345,70 @@ mouse_track_cb_click(){
     mouse_track_log "Array line: $((i_line_log++)): $s_line"
   done
 
-  # Parse preceding rows
+  # Add y <= Parse preceding rows
   local -i i_current_row=0
   local -i i_current_sub_row=0  # Wrap
   local -i i_visual_row=0  # sum
-  while (( i_current_row + i_current_sub_row < i_row_offset )); do
+  while (( i_current_row + i_current_sub_row <= i_row_offset )); do
     # Search wrap
     local i_max_len=$COLUMNS
     (( i_current_row == 0 && i_current_sub_row == 0 )) && (( i_max_len -= i_ps1 ))
     local s_line=${a_line[$i_current_row]}
     local i_line=${#s_line}
 
+    (( i_visual_row == 0  )) \
+      && (( i_current_sub_row > 0 )) \
+      && (( i_line -= i_ps1 ))
+
+    # If in wrap second line: Remove the already parsed lines
     (( i_current_sub_row > 0 )) \
-      && (( i_line -= COLUMNS * i_current_sub_row - i_ps1 ))
+      && (( i_line -= COLUMNS * i_current_sub_row ))
+
+    mouse_track_log "Line: $i_current_row + $i_current_sub_row = $i_visual_row, point0=$i_readline_point, max: ${#READLINE_LINE}"
 
     # Clause: Do not append the last line len
     # -- So clicking below will position cursor on last line
     # Todo, this does no take long wrap into account, and break too fast
     if (( i_visual_row == i_row_offset )); then
         # && (( i_line < i_max_len )); then
-      mouse_track_log "Arith9: break"
+      mouse_track_log "Arith41: break"
       break
     fi
 
-    mouse_track_log "Line: $i_current_row + $i_current_sub_row = $i_visual_row, point0=$i_readline_point"
-
+    local -i i_to_add_line=0
     if (( i_line > i_max_len )); then
       mouse_track_log "Arith0: line:$i_line, max:$i_max_len, col=$COLUMNS, sub=$i_current_sub_row"
       # Wrap
       (( i_current_sub_row += 1 ))
-      (( i_readline_point += i_max_len ))
-      (( i_visual_row +=1 ))
+      (( i_to_add_line = i_max_len ))
     else
       mouse_track_log "Arith1: line:$i_line, max:$i_max_len, col=$COLUMNS, sub=$i_current_sub_row"
-      (( i_current_row += 1 ))
-      (( i_current_sub_row = 0 ))
-      (( i_readline_point += i_line + 1 ))
-      (( i_visual_row +=1 ))
+      (( i_current_row += 1 )); (( i_current_sub_row = 0 ))
+      (( i_to_add_line = i_line + 1 ))
     fi
+
+    # Clause: Stop if last line
+    if (( i_readline_point + i_to_add_line >= ${#READLINE_LINE} )); then
+      mouse_track_log "Arith42: break"
+      break
+    fi
+
+    (( i_readline_point += i_to_add_line ))
+    (( i_visual_row +=1 ))
   done
 
-  mouse_track_log "R1: $i_readline_point"
-  (( i_readline_point += i_click_x - gi_cursor_x ))
-  mouse_track_log "R2: $i_readline_point"
-
-  # If first line: Substract the size of my PS1
-  (( i_current_row == 0 && i_current_sub_row == 0 )) \
-    && (( i_readline_point -= i_ps1 ))
-
-  mouse_track_log "i_row_offset=$i_row_offset, i_readline_point=$i_readline_point"
+  # Add x
+  #if (( i_visual_row == i_row_offset )); then
+    local -i i_last_add=$(( i_click_x - gi_cursor_x ))
+    mouse_track_log "R1: $i_readline_point, Line: $i_line, Add: $i_last_add"
+    # -- Feature: if click after the line last character, stay on this line
+    (( i_visual_row == 0 )) && (( i_last_add -= i_ps1 ))
+    # ---- TODO: restore from above 
+    (( i_last_add > i_line )) && (( i_last_add = i_line ))
+    (( i_readline_point += i_last_add ))
+    mouse_track_log "R2: $i_readline_point"
+    mouse_track_log "i_row_offset=$i_row_offset, i_visual_row=$i_visual_row, i_readline_point=$i_readline_point"
+  #fi
 
   # Move cursor
   export READLINE_POINT=$i_readline_point
@@ -394,6 +419,7 @@ mouse_track_cb_click(){
   # TODO
   # Restore ssty
   #stty "$s_oldstty"
+  } </dev/null
 
   # Redraw to avoid waiting for user action
   #echo -ne "\e[0n"  # redraw-current-line
@@ -405,20 +431,11 @@ mouse_track_ps1_len(){
   gs_ps=$PS1
   local -i res=${#PS1}
 
-  # Hi
-  mouse_track_log "PS1 (pre): len=$res, content='$gs_ps'"
-  mouse_track_log "$(echo -n "$gs_ps" | xxd)"
-
   # Expand: Warning, need bash 4.4
   gs_ps=${gs_ps@P}
 
   # Just consider last line
   gs_ps=${gs_ps##*$'\n'}
-
-  # Log
-  res=${#gs_ps}
-  mouse_track_log "PS1 (expanded): len=$res, content='$gs_ps'"
-  mouse_track_log "$(echo -n "$gs_ps" | xxd)"
 
   # Remove everything 01 and 02"
   shopt -s extglob
@@ -443,7 +460,7 @@ mouse_track_ps1_len(){
   # Bye
   res=${#gs_ps}
   mouse_track_log "PS1 (calculated): len=$res, content='$gs_ps'"
-  mouse_track_log "$(echo -n "$gs_ps" | xxd)"
+  #mouse_track_log "$(echo -n "$gs_ps" | xxd)"
 
   # Return
   echo "$res"
