@@ -12,14 +12,14 @@ Tested on xterm and: alacritty, kitty, gnome-terminal
 In a bash shell, source [mouse.sh](./mouse.sh).
 
 ```bash
-eval "$(curl -X GET https://raw.githubusercontent.com/tinmarino/mouse_xterm/master/mouse.sh)" && mouse_track_start
+eval "$(curl -X GET https://raw.githubusercontent.com/tinmarino/mouse_xterm/master/mouse.sh)" && mousetrack_start
 ```
 
 Or permanently
   
 ```bash
 git clone --depth=1 https://github.com/tinmarino/mouse_xterm Mouse && cd Mouse
-source mouse.sh && mouse_track_start  # This can be in your bashrc
+source mouse.sh && mousetrack_start  # This can be in your bashrc
 ```
 
 ## TODO
