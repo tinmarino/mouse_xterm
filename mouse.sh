@@ -2,18 +2,25 @@
 : <<'END_DOC'
     Mouse click to move cursor
 
-  DESCRIPTION :
+  DESCRIPTION:
     Your readline cursor should move on mouse click
 
-  USAGE :
+  USAGE:
     source mouse.sh && mouse_track_start
     `ctrl+l` to renable track (automatically disable when you want to scrool)
 
-  DEPENDS :
+  DEPENDS:
     xterm, readline
 
-  LICENSE :
-    Copyright 2019-2021 Tinmarino <tinmarino@gmail.com>
+  CODE:
+    1. mouse_track_start binds the mouse strokes and enables xterm mouse reports
+      - The gd_binding dictionary declare the keystrokes and binding
+    2. mouse_track_cb_click is called at each mouse click
+    3. mouse_track_work_null is setting the READLINE_POINT apropriately
+      - Its stdin is redirected to /dev/null to avoid late surprises
+  
+  LICENSE:
+    Copyright 2019-2023 Tinmarino <tinmarino@gmail.com>
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -85,16 +92,19 @@ declare -g g_tmux_cmd=''
 declare -g gs_logfile="${TMPDIR:-/tmp}/xterm_monitor.log"
 
 mouse_track_version(){
-  # Used to report issues
-  echo '0.01'
+  : 'Print current MouseTrack version
+    Used to report issues
+  '
+  printf '0.02'
 }
 
 
 mouse_track_verify_ps1(){
   : 'Used to report issues
+    Depends: xxd command
     See: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
   '
-  >&2 echo -e "\nP0: Raw"
+  >&2 echo -e "\nP0: Printinf Raw PS1"
   local ps=$PS1
   echo -n "$ps" | xxd >&2
 
@@ -107,7 +117,7 @@ mouse_track_verify_ps1(){
   ps=${ps//$'\x01'*([^$'\x02'])$'\x02'}
   echo -n "$ps" | xxd >&2
 
-  >&2 echo -e "\nP3: Checking"
+  >&2 echo -e "\nP3: Checking warnings"
   if [[ "$ps" =~ [\x07\x1b\x9c] ]]; then
     # Check if escape inside
     # 07 => BEL
@@ -126,22 +136,24 @@ mouse_track_verify_ps1(){
   fi
 
   # Echo result
-  echo -n "${#ps}"
+  >&2 echo -e "\nP4: Printing PS1 display lenght"
+  echo "${#ps}"
 }
 
 
 mouse_track_report(){
   : 'Main function to report an issue'
-  run(){
+  mouse_track_run(){
     echo -e "\n\e[34m----------------------------------------------------------"
-    echo -e "Run: $*\e[0m"
+    echo -e "MouseTrack run: $*\e[0m"
     "$@"
   }
-  run mouse_track_verify_ps1
-  run pstree -sp $$
-  run uname -a
-  run echo "$PROMPT_COMMAND"
-  run tail -n 500 "$gs_logfile"
+  mouse_track_run mouse_track_verify_ps1
+  mouse_track_run pstree -sp $$
+  mouse_track_run uname -a
+  mouse_track_run echo "$PROMPT_COMMAND"
+  mouse_track_run tail -n 500 "$gs_logfile"
+  unset -f mouse_track_run
 }
 
 
@@ -252,6 +264,7 @@ mouse_track_read_bol(){
 
   mouse_track_log "TEMP: $gi_bol_x, $gi_bol_y"
 }
+
 
 mouse_track_trap_debug(){
   : 'Trap for stopping track at command spawn (like vim)
