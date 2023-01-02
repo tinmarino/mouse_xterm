@@ -18,7 +18,7 @@
     2. mouse_track_cb_click is called at each mouse click
     3. mouse_track_work_null is setting the READLINE_POINT apropriately
       - Its stdin is redirected to /dev/null to avoid late surprises
-  
+
   LICENSE:
     Copyright 2019-2023 Tinmarino <tinmarino@gmail.com>
     This program is free software: you can redistribute it and/or modify
@@ -300,13 +300,13 @@ mouse_track_trap_debug(){
 
 
 mouse_track_work_null(){
-  : 'Work in null'
+  : 'Core arithmetic, redirecting stdin < null'
   local -i i_row_offset=0 i_readline_point=0
 
   mouse_track_log
   mouse_track_log
   mouse_track_log "---------------- Mouse click with $g_key"
-  
+
   # Clause: g_key defined: I need coordinates
   [[ -z "$g_key" ]] && {
     mouse_track_log "WARNING: a click without coordinate associated"
@@ -408,7 +408,7 @@ mouse_track_work_null(){
     mouse_track_log "R1: $i_readline_point, Line: $i_line, Add: $i_last_add"
     # -- Feature: if click after the line last character, stay on this line
     (( i_visual_row == 0 )) && (( i_last_add -= i_ps1 ))
-    # ---- TODO: restore from above 
+    # ---- TODO: restore from above
     (( i_last_add > i_line )) && (( i_last_add = i_line ))
     (( i_readline_point += i_last_add ))
     mouse_track_log "R2: $i_readline_point"
@@ -420,10 +420,6 @@ mouse_track_work_null(){
 
   # Log readline post value
   mouse_track_log "Readline post: $READLINE_POINT, $READLINE_LINE, $READLINE_MARK"
-
-  # TODO
-  # Restore ssty
-  #stty "$s_oldstty"
 }
 
 
@@ -448,7 +444,7 @@ mouse_track_cb_click(){
   # Bye
   mouse_track_log "<== Click end at $(date +"%T.%6N")"
   mouse_track_log ''
-  
+
   return 0
 }
 
