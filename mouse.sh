@@ -90,8 +90,9 @@ mouse_track_version(){
 }
 
 mouse_track_verify_ps1(){
-  # Used to report issues
-  # See: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
+  : 'Used to report issues
+    See: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
+  '
   >&2 echo -e "\nP0: Raw"
   local ps=$PS1
   echo -n "$ps" | xxd >&2
@@ -128,7 +129,7 @@ mouse_track_verify_ps1(){
 }
 
 mouse_track_report(){
-  # Main function to report an issue
+  : 'Main function to report an issue'
   run(){
     echo -e "\n\e[34m----------------------------------------------------------"
     echo -e "Run: $*\e[0m"
@@ -142,28 +143,29 @@ mouse_track_report(){
 }
 
 mouse_track_log(){
-  # Log for debug
-  :
+  : 'Log for debug'
   local s_pad_template=--------------------------------------------
   local s_pad="${s_pad_template:0:$(( (${#FUNCNAME[@]} - 1) * 2 ))}"
   { printf "%s: %s %b\n" "$(date +"%T.%3N")" "$s_pad" "$*" &>> "$gs_logfile"; } &> /dev/null
 }
 
 mouse_track_echo_enable(){
-  # Enable (high)
+  : 'Enable (high)'
   printf "%b" "$gs_echo_enable"
   gb_mouse_track_status=1
 }
 
 mouse_track_echo_disable(){
-  # Disable (low)
+  : 'Disable (low)'
   printf "%b" "$gs_echo_disable"
   gb_mouse_track_status=0
 }
 
 mouse_track_read_keys_remaining(){
-  # In: Stdin (until 'm')
-  # :arg1: timout in second
+  : 'Read the keys left from stdin
+    In: Stdin (until m)
+    :arg1: timout in second
+  '
   local timeout=${1:-0.001}
   # Out: $g_key
   g_key=""
@@ -186,9 +188,10 @@ mouse_track_consume_keys(){
 }
 
 mouse_track_read_cursor_pos(){
-  # Read $cursor_pos <- xterm <- readline
-  # Out: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
-  # See: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
+  : 'Read cursor_pos <- xterm <- readline
+    Out: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
+    See: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
+  '
   local row=0 col=0  # Cannot be declared as integer. read command would fail
 
 
@@ -201,7 +204,7 @@ mouse_track_read_cursor_pos(){
     # Clean stdin
     mouse_track_consume_keys
     #exec < /dev/tty
-    local s_oldstty=$(stty -g)
+    local oldstty; oldstty=$(stty -g)
     stty raw -echo min 0
     # Ask cursor pos
     #printf "%b" "$gs_echo_get_cursor_pos" > /dev/tty
@@ -209,7 +212,7 @@ mouse_track_read_cursor_pos(){
     #IFS=';' read -r -dR -p $'\e[6n' row col
     IFS=';' read -r -dR -p "$gs_echo_get_cursor_pos" row col
     #IFS=';' read -r -dR row col
-    stty "$s_oldstty"
+    stty "$oldstty"
   } </dev/tty
   row=${row#*[}
 
@@ -230,7 +233,7 @@ mouse_track_read_cursor_pos(){
 }
 
 mouse_track_read_bol(){
-  # Move the cursor to Begining of realine line
+  : 'Move the cursor to Begining of realine line'
   bind '"\za": beginning-of-line'  # C-a
   bind '"\ea": end-of-line'  # C-e
   bind '"\eb": set-mark'  # C-space
@@ -247,8 +250,9 @@ mouse_track_read_bol(){
 }
 
 mouse_track_trap_debug(){
-  # Trap for stopping track at command spawn (like vim)
-  # Callback : traped to debug : Disable XTERM escape
+  : 'Trap for stopping track at command spawn (like vim)
+    Callback : traped to debug : Disable XTERM escape
+  '
 
   # Log
   mouse_track_log "trap ($gb_mouse_track_status) for: $BASH_COMMAND"
@@ -276,33 +280,14 @@ mouse_track_trap_debug(){
   mouse_track_echo_disable
 }
 
-mouse_track_cb_click(){
-  : 'Callback for mouse button 0 click/release'
-
-  # Redraw to avoid long blink (still have a short one)
-  echo -ne "\e[0n"  # redraw-current-line
-
-  # Disable mouse to avoid an other click during the call
-  mouse_track_echo_disable
-  trap mouse_track_echo_enable RETURN
-
-  mouse_track_read_keys_remaining 0.001
-
-  # TODO
-  # Do not accept input while processing
-  {
-  #exec < /dev/null
-  #jlocal s_oldstty=$(stty -g)
-  #stty raw -echo min 0
-
-  #sleep 1
-
+mouse_track_work_null(){
+  : 'Work in null'
   local -i i_row_offset=0 i_readline_point=0
 
   mouse_track_log
   mouse_track_log
   mouse_track_log "---------------- Mouse click with $g_key"
-
+  
   # Clause: g_key defined: I need coordinates
   [[ -z "$g_key" ]] && {
     mouse_track_log "WARNING: a click without coordinate associated"
@@ -330,7 +315,7 @@ mouse_track_cb_click(){
   mouse_track_read_cursor_pos
 
   # Calculate PS1 len
-  local -i i_ps1=$(mouse_track_ps1_len)
+  local -i i_ps1; i_ps1=$(mouse_track_ps1_len)
 
   # Calculate line position
   (( i_row_offset = i_click_y - gi_cursor_y ))
@@ -419,15 +404,32 @@ mouse_track_cb_click(){
   # TODO
   # Restore ssty
   #stty "$s_oldstty"
-  } </dev/null
+}
 
-  # Redraw to avoid waiting for user action
-  echo -ne "\e[0n"  # redraw-current-line
-  #stty echo
+
+mouse_track_cb_click(){
+  : 'Callback for mouse button 0 click/release'
+
+  # Disable mouse to avoid an other click during the call
+  mouse_track_echo_disable
+  trap mouse_track_echo_enable RETURN
+
+  mouse_track_read_keys_remaining 0.001
+
+  # Redraw to avoid long blink (still have a short one)  # redraw-current-line
+  echo -ne "\e[0n"
+
+  # Do not accept input while processing
+  mouse_track_work_null < /dev/null
+
+  # Redraw to avoid waiting for user action   # redraw-current-line
+  echo -ne "\e[0n"
 }
 
 mouse_track_ps1_len(){
-  # Ref1: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
+  : 'Get display lenght of PS1
+    Ref1: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
+  '
   gs_ps=$PS1
   local -i res=${#PS1}
 
@@ -467,12 +469,13 @@ mouse_track_ps1_len(){
 }
 
 mouse_track_cb_void(){
-  # Callback : clean xterm and disable mouse escape
+  : 'Callback : clean xterm and disable mouse escape'
   mouse_track_read_keys_remaining 0.001
   mouse_track_log "Cb: Void with: $g_key"
 }
 
 mouse_track_tmux_get_command(){
+  : 'Get the tmux command to rebind'
   g_tmux_cmd="$(tmux list-keys -T root "$1" | sed "s/^[^W]*$1 /tmux /")"
   #g_tmux_cmd="$(echo 'if-shell -F -t = "#{mouse_any_flag}" "send-keys -M" "if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\""')"
 }
@@ -512,7 +515,7 @@ mouse_track_cb_scroll_down(){
 }
 
 mouse_track_set_bindings(){
-  # Set all global bindings (mouse event callbacks)
+  : 'Set all global bindings (mouse event callbacks)'
   local s_keyseq=''
   mouse_track_log 'Set bindings'
   for s_keyseq in "${!gd_binding[@]}"; do
@@ -523,7 +526,7 @@ mouse_track_set_bindings(){
 }
 
 mouse_track_unset_bindings(){
-  # Unset all global bindings (mouse event callbacks)
+  : 'Unset all global bindings (mouse event callbacks)'
   local s_keyseq=''
   mouse_track_log 'Unset bindings'
   for s_keyseq in "${!gd_binding[@]}"; do
@@ -534,13 +537,13 @@ mouse_track_unset_bindings(){
 }
 
 mouse_track_prompt_command(){
-  # Disable mouse tracking
+  : 'Disable mouse tracking'
   command -v mouse_track_echo_enable &> /dev/null \
     && mouse_track_echo_enable
 }
 
 mouse_track_start(){
-  # Init : Enable mouse tracking
+  : 'Init : Enable mouse tracking'
   mouse_track_set_bindings
 
   # Disable mouse tracking before each command
@@ -558,8 +561,8 @@ mouse_track_start(){
 }
 
 mouse_track_stop(){
-  # Finish : Disable mouse tracking
-  # Disable mouse tracking
+  : 'Finish : Disable mouse tracking
+  '
   mouse_track_echo_disable
 
   ## Remove echo_enable from PROMPT_COMMAND
