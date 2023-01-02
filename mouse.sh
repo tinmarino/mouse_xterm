@@ -182,10 +182,10 @@ mouse_track_echo_disable(){
 mouse_track_read_keys_remaining(){
   : 'Read the keys left from stdin
     In: Stdin (until m)
+    Out: g_key
     :arg1: timout in second
   '
   local timeout=${1:-0.001}
-  # Out: $g_key
   g_key=''
   while read -r -n 1 -t "$timeout" c; do
     g_key="$g_key$c"
@@ -199,7 +199,7 @@ mouse_track_read_keys_remaining(){
 
 mouse_track_consume_keys(){
   local s_consumed=''
-  while read -r -n 1 -t 0.001 c; do
+  while read -r -n 1 -t 0 c; do
     s_consumed="$s_consumed$c"
   done
 
@@ -209,7 +209,8 @@ mouse_track_consume_keys(){
 
 mouse_track_read_cursor_pos(){
   : 'Read cursor_pos <- xterm <- readline
-    Out: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
+    Out:
+      gi_cursor_{x,y} 50;1 (x;y) if click on line 1, column 50: starting at 1;1
     See: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
   '
   local -i i_row=0 i_col=0  # Cannot be declared as integer. read command would fail
@@ -330,7 +331,8 @@ mouse_track_work_null(){
   mouse_track_log "Click: x=$i_click_x, y=$i_click_y"
 
   # Get Cursor position (x0, y0)
-  mouse_track_read_cursor_pos
+  # -- This creates flinkering
+  # mouse_track_read_cursor_pos
 
   # Calculate PS1 len
   local -i i_ps1; i_ps1=$(mouse_track_ps1_len)
@@ -427,21 +429,27 @@ mouse_track_work_null(){
 
 mouse_track_cb_click(){
   : 'Callback for mouse button 0 click/release'
+  # Hi
+  mouse_track_log ''
+  mouse_track_log "==> Click start at $(date +"%T.%6N")"
 
   # Disable mouse to avoid an other click during the call
   mouse_track_echo_disable
   trap mouse_track_echo_enable RETURN
 
-  mouse_track_read_keys_remaining 0.001
-
-  # Redraw to avoid long blink (still have a short one)  # redraw-current-line
-  echo -ne "\e[0n"
+  mouse_track_read_keys_remaining 0.0001
 
   # Do not accept input while processing
   mouse_track_work_null < /dev/null
 
-  # Redraw to avoid waiting for user action   # redraw-current-line
-  echo -ne "\e[0n"
+  # Redraw to avoid long blink (still have a short one)  # redraw-current-line
+  #printf '\e[0n'
+
+  # Bye
+  mouse_track_log "<== Click end at $(date +"%T.%6N")"
+  mouse_track_log ''
+  
+  return 0
 }
 
 mouse_track_ps1_len(){
@@ -457,7 +465,7 @@ mouse_track_ps1_len(){
   # Just consider last line
   gs_ps=${gs_ps##*$'\n'}
 
-  # Remove everything 01 and 02"
+  # Remove everything 01 and 02
   shopt -s extglob
   gs_ps=${gs_ps//$'\x01'*([^$'\x02'])$'\x02'}
 
