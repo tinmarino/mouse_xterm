@@ -89,6 +89,7 @@ mouse_track_version(){
   echo '0.01'
 }
 
+
 mouse_track_verify_ps1(){
   : 'Used to report issues
     See: https://stackoverflow.com/questions/3451993/how-to-expand-ps1
@@ -128,6 +129,7 @@ mouse_track_verify_ps1(){
   echo -n "${#ps}"
 }
 
+
 mouse_track_report(){
   : 'Main function to report an issue'
   run(){
@@ -142,24 +144,28 @@ mouse_track_report(){
   run tail -n 500 "$gs_logfile"
 }
 
+
 mouse_track_log(){
   : 'Log for debug'
   local s_pad_template=--------------------------------------------
-  local s_pad="${s_pad_template:0:$(( (${#FUNCNAME[@]} - 1) * 2 ))}"
-  { printf "%s: %s %b\n" "$(date +"%T.%3N")" "$s_pad" "$*" &>> "$gs_logfile"; } &> /dev/null
+  local pad="${s_pad_template:0:$(( (${#FUNCNAME[@]} - 1) * 2 ))}"
+  { printf '%(%T)T: %s %b\n' -1 "$pad" "$*" &>> "$gs_logfile"; } &> /dev/null
 }
 
+
 mouse_track_echo_enable(){
-  : 'Enable (high)'
-  printf "%b" "$gs_echo_enable"
+  : 'Enable xterm mouse reporting (high)'
+  printf '%b' "$gs_echo_enable"
   gb_mouse_track_status=1
 }
 
+
 mouse_track_echo_disable(){
-  : 'Disable (low)'
-  printf "%b" "$gs_echo_disable"
+  : 'Disable xterm mouse reporting (low)'
+  printf '%b' "$gs_echo_disable"
   gb_mouse_track_status=0
 }
+
 
 mouse_track_read_keys_remaining(){
   : 'Read the keys left from stdin
@@ -168,7 +174,7 @@ mouse_track_read_keys_remaining(){
   '
   local timeout=${1:-0.001}
   # Out: $g_key
-  g_key=""
+  g_key=''
   while read -r -n 1 -t "$timeout" c; do
     g_key="$g_key$c"
     # M and m for click, R for get_cursor_pos
@@ -177,6 +183,7 @@ mouse_track_read_keys_remaining(){
 
   mouse_track_log "Read: '$g_key'"
 }
+
 
 mouse_track_consume_keys(){
   local s_consumed=''
@@ -187,50 +194,47 @@ mouse_track_consume_keys(){
   mouse_track_log "Consumed: '$s_consumed'"
 }
 
+
 mouse_track_read_cursor_pos(){
   : 'Read cursor_pos <- xterm <- readline
     Out: 50;1 (x;y) if click on line 1, column 50: starting at 1;1
     See: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
   '
-  local row=0 col=0  # Cannot be declared as integer. read command would fail
+  local -i i_row=0 i_col=0  # Cannot be declared as integer. read command would fail
+  local row_read
 
 
-  ## Read it
-  #read -srdR g_cursor_pos
-  #g_cursor_pos=${g_cursor_pos#*[}
-  #mouse_track_log "cursor_pos returns:  $g_cursor_pos"
-  #mouse_track_log "cursor_pos pre"
+  # Read it
   {
     # Clean stdin
     mouse_track_consume_keys
-    #exec < /dev/tty
+
+    # Set echo style (no echo)
     local oldstty; oldstty=$(stty -g)
     stty raw -echo min 0
+
     # Ask cursor pos
-    #printf "%b" "$gs_echo_get_cursor_pos" > /dev/tty
-    #read -r -d R -p $'\E[6n' -a pos
-    #IFS=';' read -r -dR -p $'\e[6n' row col
-    IFS=';' read -r -dR -p "$gs_echo_get_cursor_pos" row col
-    #IFS=';' read -r -dR row col
+    IFS=';' read -r -dR -p "$gs_echo_get_cursor_pos" row_read i_col
+
+    # Reset echo style (display keystrokes)
     stty "$oldstty"
   } </dev/tty
-  row=${row#*[}
+  i_row=${row_read#*[}
 
-  mouse_track_log "Pos: x=$col, $row"
+  mouse_track_log "Pos: x=$i_col, $i_row"
 
   # Parse it
   if (( $# > 0 )); then
-    (( gi_bol_x = col ))
-    (( gi_bol_y = row ))
+    (( gi_bol_x = i_col ))
+    (( gi_bol_y = i_row ))
     mouse_track_log "Bol: x=$gi_bol_x, y=$gi_bol_y, POINT=$READLINE_POINT"
   else
-    (( gi_cursor_x = col ))
-    (( gi_cursor_y = row ))
+    (( gi_cursor_x = i_col ))
+    (( gi_cursor_y = i_row ))
     mouse_track_log "Cursor: x=$gi_cursor_x, y=$gi_cursor_y"
   fi
-  #(( gi_cursor_x = ${g_cursor_pos##*;} ))
-  #(( gi_cursor_y = ${g_cursor_pos%%;*} ))
 }
+
 
 mouse_track_read_bol(){
   : 'Move the cursor to Begining of realine line'
@@ -239,7 +243,7 @@ mouse_track_read_bol(){
   bind '"\eb": set-mark'  # C-space
 
   # Move cursor to BOL
-  printf "%b" 'za' > /dev/tty
+  printf '%b' 'za' > /dev/tty
   echo -e "\e[12H"
 
   READLINE_POINT=100
@@ -279,6 +283,7 @@ mouse_track_trap_debug(){
   # Disable mouse as callback
   mouse_track_echo_disable
 }
+
 
 mouse_track_work_null(){
   : 'Work in null'
@@ -480,6 +485,7 @@ mouse_track_tmux_get_command(){
   #g_tmux_cmd="$(echo 'if-shell -F -t = "#{mouse_any_flag}" "send-keys -M" "if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -et=\""')"
 }
 
+
 mouse_track_tmux_proxy(){
   local s_tmux_cmd="$1"
   mouse_track_read_keys_remaining 0.001
@@ -508,11 +514,12 @@ mouse_track_tmux_proxy(){
   mouse_track_cb_void
 }
 
+
 mouse_track_cb_scroll_down(){
   mouse_track_log 'Cb: Scroll Down'
   mouse_track_read_keys_remaining 0.001
-  #printf "%b" "$gs_echo_enable$s_bindx_4$g_key"
 }
+
 
 mouse_track_set_bindings(){
   : 'Set all global bindings (mouse event callbacks)'
@@ -525,6 +532,7 @@ mouse_track_set_bindings(){
   done
 }
 
+
 mouse_track_unset_bindings(){
   : 'Unset all global bindings (mouse event callbacks)'
   local s_keyseq=''
@@ -536,11 +544,13 @@ mouse_track_unset_bindings(){
   done
 }
 
+
 mouse_track_prompt_command(){
   : 'Disable mouse tracking'
   command -v mouse_track_echo_enable &> /dev/null \
     && mouse_track_echo_enable
 }
+
 
 mouse_track_start(){
   : 'Init : Enable mouse tracking'
@@ -560,6 +570,7 @@ mouse_track_start(){
   mouse_track_echo_enable
 }
 
+
 mouse_track_stop(){
   : 'Finish : Disable mouse tracking
   '
@@ -574,4 +585,6 @@ mouse_track_stop(){
   mouse_track_unset_bindings
 }
 
+
+# The fonction must be exported in case a bash subshell is entered
 export -f mouse_track_prompt_command
