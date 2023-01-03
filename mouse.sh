@@ -19,6 +19,22 @@
     3. mousetrack_work_null is setting the READLINE_POINT apropriately
       - Its stdin is redirected to /dev/null to avoid late surprises
 
+  BUTTON BIT FIELD
+    1 |  0 | MB1 pressed
+    1 |  1 | MB2 pressed
+    1 |  2 | MB3 pressed
+    1 |  3 | release
+    2 |  4 | Shift modifier
+    3 |  8 | Meta modifier
+    4 | 16 | Ctrl modifer
+    5 | 32 | Motion
+    6 | 64 | Wheel
+    7 | 128|
+    
+    32 => On button-motion events, xterm adds 32 to the event code (the third character, Cb)
+    64 => Xterm Wheel: mice may return buttons 4 and 5.  Those buttons are represented by the same event codes as buttons 1 and 2 respectively, except that 64 is added to the event code.
+    From: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Normal-tracking-mode
+  
   LICENSE:
     Copyright 2019-2023 Tinmarino <tinmarino@gmail.com>
     This program is free software: you can redistribute it and/or modify
@@ -37,22 +53,30 @@ declare -g g_mousetrack_echo_get_cursor_pos=$'\033[6n'
 # Binding <dict>: seq -> bash function
 # -- Prefixed by \033[
 declare -gA g_mousetrack_d_binding=(
-  [<64;]=mousetrack_cb_scroll_up
-  [<65;]=mousetrack_cb_scroll_down
   # Click (0) Begining of line + X click cb
   # -- ^[[<0;29;18M
   [<0;]=mousetrack_cb_click
   [<1;]=mousetrack_cb_click2
   [<2;]=mousetrack_cb_click3
+  [<3;]=mousetrack_cb_void  # should be mouse release
   [<32;]=mousetrack_cb_drag1
   [<33;]=mousetrack_cb_void  # middle
   [<34;]=mousetrack_cb_void  # right
-  # Dichotomically found (xterm, 67, 68 maybe too)
-  [32;]=mousetrack_cb_click
+  [<64;]=mousetrack_cb_scroll_up
+  [<65;]=mousetrack_cb_scroll_down
+  # Xterm motion, actually normal click
+  [32;]=mousetrack_cb_click  # xterm mouse click
   [33;]=mousetrack_cb_click2
   [34;]=mousetrack_cb_click3
+  [35;]=mousetrack_cb_void  # xterm mouse release
+  # Xterm whell
+  [64;]=mousetrack_cb_drag1  # xterm mouse release
+  [65;]=mousetrack_cb_drag1  # xterm mouse release
+  # Xerm scroll empirical
+  [96;]=mousetrack_cb_scroll_up
+  [97;]=mousetrack_cb_scroll_down
 )
-declare -g g_mousetrack_prompt_command='mousetrack_prompt_command;'
+declare -g g_mousetrack_prompt_command='mousetrack_prompt_command_keep_me_at_end; '
 mousetrack_cb_scroll_up(){ mousetrack_tmux_proxy 'tmux copy-mode -e \; send-keys -X -N 5 scroll-up'; }
 mousetrack_cb_scroll_down(){ mousetrack_tmux_proxy ''; }
 mousetrack_cb_click2(){ mousetrack_tmux_proxy 'tmux paste-buffer'; }
@@ -85,7 +109,9 @@ declare -gi g_mousetrack_i_bol_y=0
 declare -g g_mousetrack_key=''
 declare -g g_mousetrack_ps=''
 
-# Mouse track status <bool>: 1 tracking; 0 Not tracking
+# Mouse track status <int>
+# -- 0 Not tracking
+# -- 1 Tracking
 declare -gi g_mousetrack_b_status=0
 
 # Tmux command to launch
@@ -169,6 +195,7 @@ mousetrack_log(){
 
 mousetrack_echo_enable(){
   : 'Enable xterm mouse reporting (high)'
+  mousetrack_log "Enabling mouse tracking"
   printf '%b' "$g_mousetrack_echo_enable"
   g_mousetrack_b_status=1
 }
@@ -176,6 +203,7 @@ mousetrack_echo_enable(){
 
 mousetrack_echo_disable(){
   : 'Disable xterm mouse reporting (low)'
+  mousetrack_log "Disabling mouse tracking"
   printf '%b' "$g_mousetrack_echo_disable"
   g_mousetrack_b_status=0
 }
@@ -275,26 +303,26 @@ mousetrack_trap_debug(){
   '
 
   # Log
-  mousetrack_log "trap ($g_mousetrack_b_status) for: $BASH_COMMAND"
+  mousetrack_log "In trap for: track_status=$g_mousetrack_b_status, command=$BASH_COMMAND"
 
   # Clause: mouse track disabled yet
   (( g_mousetrack_b_status == 0 )) \
-    && { mousetrack_log "trap to disable disregarded (already disabled)"; return; }
+    && { mousetrack_log "Trap to disable mouse: disregarded <= already disabled"; return; }
 
   # Clause: bash is completing
   [[ -v COMP_LINE && -n "$COMP_LINE" ]] \
-    && { mousetrack_log "trap to disable disregarded (completing)"; return; }
+    && { mousetrack_log "Trap to disable mouse: disregarded <= in bash completion routine"; return; }
 
   # Clause: don't cause a preexec for $PROMPT_COMMAND
   [[ "$BASH_COMMAND" == "$PROMPT_COMMAND" ]] \
-    && { mousetrack_log "trap to disable disregarded (prompt command)"; return; }
+    && { mousetrack_log "Trap to disable mouse: disregarded <= in prompt command routine"; return; }
 
   # Clause: bound from myself for example at scroll
   [[ "$BASH_COMMAND" =~ ^mousetrack* ]] \
-    && { mousetrack_log "trap to disable disregarded (self call)"; return; }
+    && { mousetrack_log "Trap to disable mouse: disregarded <= self call from mousetrack"; return; }
 
   # Log
-  mousetrack_log "trap to disable passed clause. Stoping mouse tracking..."
+  mousetrack_log "Trap to disable mouse passed all clauses => Stoping mouse tracking..."
 
   # Disable mouse as callback
   mousetrack_echo_disable
@@ -412,7 +440,7 @@ mousetrack_work_null(){
     (( i_visual_row == 0 )) && (( i_last_add -= i_ps1 ))
     # ---- TODO: restore from above
     (( i_last_add > i_line )) && (( i_last_add = i_line ))
-    (( i_readline_point += i_last_add ))
+    (( i_readline_point += i_last_add - 1 ))
     mousetrack_log "R2: $i_readline_point"
     mousetrack_log "i_row_offset=$i_row_offset, i_visual_row=$i_visual_row, i_readline_point=$i_readline_point"
   #fi
@@ -564,7 +592,7 @@ mousetrack_unset_bindings(){
 }
 
 
-mousetrack_prompt_command(){
+mousetrack_prompt_command_keep_me_at_end(){
   : 'Disable mouse tracking'
   command -v mousetrack_echo_enable &> /dev/null \
     && mousetrack_echo_enable
@@ -579,11 +607,17 @@ mousetrack_start(){
   trap mousetrack_trap_debug DEBUG
 
   # Enable mouse tracking after command return
-  if [[ ! "$PROMPT_COMMAND" =~ $g_mousetrack_prompt_command ]]; then
-    # Append ";" in case PROMPT_COMMAND is already defined
-    [[ -v PROMPT_COMMAND ]] && [[ -n "$PROMPT_COMMAND" ]] && [[ "${PROMPT_COMMAND: -1}" != ";" ]] && PROMPT_COMMAND+="; "
-    export PROMPT_COMMAND+=$g_mousetrack_prompt_command
+  if [[ ! "$PROMPT_COMMAND" == *"$g_mousetrack_prompt_command"* ]]; then
+    PROMPT_COMMAND=${PROMPT_COMMAND//$g_mousetrack_prompt_command}
   fi
+
+  # Append ";" in case PROMPT_COMMAND is already defined
+  if [[ -v PROMPT_COMMAND ]] && [[ -n "$PROMPT_COMMAND" ]] && [[ ! "$PROMPT_COMMAND" =~ \;[[:space:]]*$ ]]; then
+    PROMPT_COMMAND+="; "
+  fi
+  
+  # Append my command
+  PROMPT_COMMAND+=$g_mousetrack_prompt_command
 
   # Enable now anyway
   mousetrack_echo_enable
@@ -591,8 +625,7 @@ mousetrack_start(){
 
 
 mousetrack_stop(){
-  : 'Finish : Disable mouse tracking
-  '
+  : 'Finish : Disable mouse tracking'
   mousetrack_echo_disable
 
   # Remove echo_enable from PROMPT_COMMAND
@@ -606,4 +639,4 @@ mousetrack_stop(){
 
 
 # The fonction must be exported in case a bash subshell is entered
-export -f mousetrack_prompt_command
+export -f mousetrack_prompt_command_keep_me_at_end
